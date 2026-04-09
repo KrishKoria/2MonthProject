@@ -1,10 +1,12 @@
-# Payment Integrity Claims Intelligence Platform — Design Specification
+# Claims Investigation Intelligence Assistant — Design Specification
+
+> **Revised after adversarial review with GPT-5.4.** Changes from the original spec are documented in the Appendix.
 
 ## 1. Problem Statement
 
-Healthcare payers lose over $100B annually to improper payments (GAO, 2023). Payment integrity teams currently rely on fragmented, siloed workflows — manually cross-referencing claims against clinical records, policy rules, and coding guidelines — to identify and investigate suspicious claims. This process is slow, inconsistent, and scales poorly.
+Healthcare payers lose over $100B annually to improper payments (GAO, 2023). Payment integrity teams currently rely on fragmented, siloed workflows — manually cross-referencing claims against policy rules and coding guidelines — to identify and investigate suspicious claims. This process is slow, inconsistent, and scales poorly.
 
-This project builds an **AI-powered Payment Integrity Claims Intelligence Platform** that combines classical ML-based anomaly detection with agentic GenAI to automatically flag suspicious claims, retrieve relevant policy evidence, and generate audit-ready investigation rationales — reducing manual investigation time by an estimated 40-60% while improving consistency and defensibility.
+This project builds an **AI-powered Claims Investigation Intelligence Assistant** that combines classical ML-based anomaly detection with agentic GenAI to automatically flag suspicious Medicare Part B professional claims, retrieve relevant policy evidence, and generate investigation-support rationales — demonstrating how AI can reduce manual investigation effort while improving consistency.
 
 ### 1.1 Why Payment Integrity?
 
@@ -13,15 +15,20 @@ This project builds an **AI-powered Payment Integrity Claims Intelligence Platfo
 - Documents identify "manual reconciliation", "siloed workflows", and "fragmented data" as explicit pain points
 - The vertical has the strongest combination of data volume, repeatability, and direct workflow leverage
 
-### 1.2 Scope Boundaries
+### 1.2 Domain Scope: Medicare Part B Professional Claims
+
+The system is intentionally narrowed to **Medicare Part B professional claims** — the cleanest fit with publicly available CMS assets (NCCI practitioner edits, CMS Claims Processing Manual, HCPCS descriptions). This is not a general payment integrity platform. It is a focused investigation assistant for a specific, well-defined claims universe where the public policy corpus can actually support decision-relevant evidence retrieval.
+
+### 1.3 Scope Boundaries
 
 **In scope:**
-- Claims anomaly detection ML pipeline (ingestion -> feature engineering -> scoring)
-- RAG system over CMS policy documents and coding guidelines
-- Multi-agent investigation workflow (triage -> evidence retrieval -> rationale generation)
-- Interactive dashboard with claim explorer, risk scoring, evidence trails, and investigator chat
-- Evaluation metrics and efficiency benchmarking
-- Designed for Abacus data plug-in (medallion-compatible schema, configurable connectors)
+- Claims anomaly detection ML pipeline (ingestion -> feature engineering -> scoring) for Medicare Part B professional claims
+- RAG system over public CMS policy documents for explanatory evidence
+- NCCI rules engine with modifier-aware structured lookups (not RAG)
+- Multi-agent investigation workflow (triage -> evidence retrieval -> rationale generation) via LangGraph
+- Interactive dashboard with claim explorer, risk scoring, evidence trails, and embedded investigation chat
+- Evaluation metrics with honest synthetic-data framing and rules baseline ablation
+- Designed with Abacus-compatible patterns (medallion schema, configurable connectors)
 
 **Out of scope:**
 - Real PHI/PII data handling or HIPAA-compliant deployment
@@ -29,17 +36,31 @@ This project builds an **AI-powered Payment Integrity Claims Intelligence Platfo
 - Pre-pay real-time decisioning (this focuses on post-pay investigation)
 - Provider communication and dispute management
 - Production-grade authentication/authorization
+- Full CPT coding guidelines (AMA-copyrighted)
+- NCDs, LCDs, or payer-specific coverage policies
 
-### 1.3 Success Metrics
+### 1.4 Success Metrics
 
-| Metric | Target |
-|---|---|
-| ML anomaly detection AUC-ROC | > 0.85 |
-| RAG retrieval precision on policy evidence | > 80% |
-| Agentic rationale coherence (manual eval on 50 samples) | > 85% rated "useful" |
-| End-to-end latency: claim -> flag -> rationale | < 30 seconds |
-| UI completeness | Fully interactive dashboard with all core flows |
-| Demo readiness | Live walkthrough-ready with compelling narrative |
+| Metric | Target | Notes |
+|---|---|---|
+| XGBoost AUC-ROC on synthetic data | > 0.85 | Grouped temporal split; framed as capability demo |
+| XGBoost lift over rules baseline | Measurable | Ablation proves ML adds value beyond deterministic checks |
+| RAG retrieval precision on policy evidence | > 80% | On golden eval set of Medicare Part B policy questions |
+| Agentic rationale coherence (manual eval on 50 samples) | > 85% rated "useful" | Human evaluation rubric |
+| End-to-end latency: claim -> flag -> rationale | < 30 seconds | Single claim investigation |
+| UI completeness | Fully interactive with core investigation flow | Dashboard -> claims -> investigate -> feedback |
+| Demo readiness | Live walkthrough-ready with compelling narrative | Honest about synthetic data and limitations |
+
+### 1.5 Honest Framing & Limitations
+
+This project is a **capability demonstration**, not a production fraud detector. Key limitations acknowledged upfront:
+
+- **Synthetic data**: All ML metrics are on Synthea-generated data with programmatically injected anomalies. Model performance on real payer claims would differ and require re-training with real data.
+- **Narrow policy corpus**: Only publicly available CMS material is indexed. Production use would require AMA CPT guidelines, LCD/NCD databases, and payer-specific policies.
+- **Injected anomalies**: The ML model detects patterns we injected, which are based on real fraud typologies but are not a substitute for real-world improper payment distributions. CMS notes most improper payments stem from documentation and medical-necessity issues, not just coding anomalies.
+- **Investigation-support, not audit-ready**: AI rationales support human investigation. They are not legally defensible audit determinations.
+
+What IS demonstrated: production-architecture patterns, end-to-end ML + GenAI + agentic pipeline, explainable AI, human-in-the-loop design, and domain-grounded evidence retrieval.
 
 ---
 
@@ -48,44 +69,54 @@ This project builds an **AI-powered Payment Integrity Claims Intelligence Platfo
 ### 2.1 Synthetic Claims Data
 
 **Primary source: Synthea**
-Generate ~50K-100K synthetic patient records producing realistic claims histories including:
-- Medical claims (inpatient, outpatient, professional)
-- Pharmacy claims
+Generate ~50K-100K synthetic patient records producing realistic Medicare Part B professional claims histories including:
+- Professional claims (office visits, procedures, specialist consultations)
 - Member eligibility and enrollment
 - Provider roster with specialties and NPI numbers
 
 **Supplementary: CMS Public Use Files**
-Medicare provider utilization and payment data from CMS.gov to calibrate realistic charge distributions, procedure frequencies, and provider billing patterns.
+Medicare provider utilization and payment data from CMS.gov to calibrate realistic charge distributions, procedure frequencies, and provider billing patterns for Part B professional services.
 
 ### 2.2 Injected Anomaly Patterns
 
-Since Synthea produces "clean" data, programmatically inject realistic fraud/waste/abuse patterns at a ~5-8% overall rate with ground-truth labels:
+Narrowed to **3 anomaly types** that the public policy corpus (CMS manuals + NCCI practitioner edits) can actually support with decision-relevant evidence:
 
-| Pattern | Description | Injection Method | Rate |
+| Pattern | Description | Injection Method | Rate | Policy Basis |
+|---|---|---|---|---|
+| **Upcoding** | Procedure codes shifted to higher-paying variants within same family | Replace CPT codes with higher-level codes in same category | ~2% | CMS Claims Processing Manual billing rules |
+| **NCCI Code-Pair Violations** | Procedures billed together that violate NCCI edit rules (unbundling, mutually exclusive) | Pair conflicting procedure codes per NCCI practitioner PTP edits, without valid modifier bypass | ~2% | NCCI PTP edits (structured rules) |
+| **Duplicate Billing** | Same service billed multiple times with slight date/modifier variations | Clone claims with +-1 day offset and minor modifier changes | ~1.5% |CMS Claims Processing Manual duplicate billing rules |
+
+Total anomaly rate: ~5.5%. Each injected anomaly gets a label record: `(claim_id, anomaly_type, injection_params)`.
+
+**Why only 3 types:** GPT-5.4's adversarial review correctly identified that anomaly types must be supportable by the policy corpus. These 3 have direct, verifiable policy backing in public CMS material. "Phantom services" and "provider outliers" from the original spec lacked sufficient policy grounding for evidence-based investigation rationales.
+
+### 2.3 Policy & Rules Knowledge Base
+
+**Two distinct systems — not one:**
+
+**A. NCCI Rules Engine (Structured Lookup, NOT RAG):**
+
+| Asset | Content | Format | Update Cadence |
 |---|---|---|---|
-| **Upcoding** | Procedure codes shifted to higher-paying variants within same family | Replace CPT codes with higher-level codes in same category | ~1.5% |
-| **Unbundling** | Bundled procedures split into separate claims | Split single bundled claim into 2-3 component claims | ~1% |
-| **Duplicate billing** | Same service billed multiple times with slight date/modifier variations | Clone claims with +-1 day offset and minor modifier changes | ~1% |
-| **Phantom services** | Services billed with no matching diagnosis context | Insert procedure claims with unrelated or missing diagnosis codes | ~0.8% |
-| **Impossible combinations** | Mutually exclusive procedures on same date | Pair conflicting procedure codes per NCCI edit rules | ~0.7% |
-| **Provider outliers** | Statistically abnormal billing volumes or charge patterns | Select ~2% of providers, inflate their claim volume by 3-5x | ~1% |
+| NCCI Practitioner PTP Edits | Code-pair conflicts, mutually exclusive procedures | CSV with code_1, code_2, effective_date, deletion_date, modifier_indicator | Quarterly (CMS.gov) |
+| Modifier Indicators | Whether modifier bypass (e.g., -59, -XE/XS/XP/XU) is allowed for each code pair | Encoded in PTP edit modifier_indicator column (0, 1, 9) | Quarterly |
 
-Each injected anomaly gets a label record: `(claim_id, anomaly_type, injection_params)` for supervised training and evaluation.
+This is treated as a **deterministic rules engine** with structured queries, not semantic search. Modifier logic is explicitly modeled: modifier_indicator=1 means a modifier can bypass the edit; modifier_indicator=0 means it cannot.
 
-### 2.3 Policy & Rules Knowledge Base (RAG Corpus)
+**B. RAG Corpus (Explanatory Policy Text):**
 
-| Source | Content | Availability |
-|---|---|---|
-| CMS Medicare Claims Processing Manual | ~20 chapters covering billing rules, code requirements, coverage decisions | Public (cms.gov) |
-| CMS National Correct Coding Initiative (NCCI) Edits | Code pair conflicts, bundling rules, mutually exclusive procedures | Public (cms.gov) |
-| ICD-10-CM / CPT Coding Guidelines | Diagnosis and procedure code relationships, coding conventions | Public (CMS/AMA summaries) |
-| CMS Fraud, Waste & Abuse Guidelines | Definitions, examples, investigation procedures | Public (cms.gov) |
+| Source | Content | Availability | Scope |
+|---|---|---|---|
+| CMS Medicare Claims Processing Manual | Selected chapters relevant to Part B professional billing (Ch. 12: Physician/Practitioner, Ch. 23: Fee Schedule, Ch. 26: Completing Claims) | Public (cms.gov) | Narrowed to Part B professional |
+| HCPCS Code Descriptions | Procedure code descriptions and categories | Public (cms.gov) | Full HCPCS Level II |
+| CMS Fraud, Waste & Abuse Guidelines | Definitions, examples, investigation procedures | Public (cms.gov) | General |
 
-Documents will be chunked, embedded, and indexed for hybrid retrieval (semantic + keyword).
+RAG is used **only for explanatory text** — helping the rationale agent cite specific policy language. It does NOT adjudicate code-pair validity (that's the NCCI rules engine).
 
 ### 2.4 Data Schema
 
-Designed to mirror Abacus's medallion architecture (Silver/Gold layer) for seamless future plug-in:
+Follows medallion architecture patterns for Abacus data compatibility:
 
 ```
 data/
@@ -97,22 +128,26 @@ data/
 │
 ├── processed/                    # Feature-engineered (Silver/Gold equivalent)
 │   ├── medical_claims.parquet    # claim_id, member_id, provider_id, service_date,
-│   │                             # procedure_codes, diagnosis_codes, charge_amount,
-│   │                             # allowed_amount, paid_amount, place_of_service
-│   ├── pharmacy_claims.parquet   # rx_number, NDC, quantity, days_supply, ingredient_cost
+│   │                             # procedure_codes, diagnosis_codes, modifiers,
+│   │                             # charge_amount, allowed_amount, paid_amount,
+│   │                             # place_of_service
 │   ├── member_eligibility.parquet # member_id, plan_id, enrollment_dates, demographics
 │   ├── provider_roster.parquet   # provider_id, NPI, specialty, facility_type, network_status
 │   └── anomaly_labels.parquet    # claim_id, anomaly_type, anomaly_subtype, injection_params
 │
 ├── features/                     # ML-ready feature tables (SAM equivalent)
-│   ├── claim_features.parquet    # Per-claim feature vectors
-│   ├── provider_features.parquet # Aggregated provider-level statistics
-│   └── member_features.parquet   # Aggregated member-level patterns
+│   ├── claim_features.parquet    # Per-claim feature vectors (point-in-time)
+│   ├── provider_features.parquet # Aggregated provider-level statistics (point-in-time)
+│   └── member_features.parquet   # Aggregated member-level patterns (point-in-time)
+│
+├── ncci/                         # Structured rules (NOT in RAG)
+│   ├── practitioner_ptp_edits.csv # Code-pair rules with modifier indicators
+│   └── ncci_metadata.json        # Version, effective date, source URL
 │
 └── policy_docs/                  # RAG corpus
-    ├── cms_claims_manual/        # Chunked markdown files
-    ├── ncci_edits/               # Structured code-pair rules (CSV + descriptions)
-    └── coding_guidelines/        # ICD-10/CPT reference material
+    ├── cms_claims_manual/        # Selected chapters, chunked markdown
+    ├── hcpcs_descriptions/       # Code descriptions
+    └── fraud_guidelines/         # CMS FWA reference material
 ```
 
 ---
@@ -122,39 +157,40 @@ data/
 ### 3.1 High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        FRONTEND (Next.js)                          │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────┐  ┌───────────┐  │
-│  │  Dashboard   │  │ Claim Detail │  │ Investi-  │  │ Analytics │  │
-│  │  Overview    │  │ & Evidence   │  │ gation    │  │ & Metrics │  │
-│  │             │  │  Trail       │  │ Chat      │  │           │  │
-│  └──────┬──────┘  └──────┬───────┘  └─────┬─────┘  └─────┬─────┘  │
-└─────────┼────────────────┼────────────────┼───────────────┼────────┘
-          │                │                │               │
-          ▼                ▼                ▼               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      API LAYER (FastAPI)                            │
-│  /claims  /claims/{id}/investigate  /chat  /analytics  /pipeline   │
-└────────────────────────────┬────────────────────────────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-┌──────────────────┐ ┌──────────────┐ ┌─────────────────┐
-│   ML PIPELINE    │ │ AGENTIC LAYER│ │   RAG SYSTEM    │
-│                  │ │              │ │                 │
-│ Feature Engine   │ │ Triage Agent │ │ Doc Chunker     │
-│ Anomaly Detector │ │ Evidence     │ │ Embedding Store │
-│ Risk Scorer      │ │   Agent      │ │ Hybrid Retriever│
-│ Explainer        │ │ Rationale    │ │                 │
-│                  │ │   Agent      │ │                 │
-│                  │ │ Orchestrator │ │                 │
-└────────┬─────────┘ └──────┬───────┘ └────────┬────────┘
-         │                  │                   │
-         ▼                  ▼                   ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                       DATA LAYER                                    │
-│  Synthetic Claims (Parquet)  │  Policy Docs (ChromaDB)  │  SQLite  │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      FRONTEND (Next.js)                         │
+│  ┌───────────┐  ┌──────────────┐  ┌────────────────────────┐   │
+│  │ Dashboard  │  │   Claims     │  │  Claim Detail +        │   │
+│  │ Overview   │  │   Explorer   │  │  Investigation +       │   │
+│  │           │  │             │  │  Embedded Chat +       │   │
+│  │           │  │             │  │  Analytics             │   │
+│  └─────┬─────┘  └──────┬──────┘  └───────────┬────────────┘   │
+└────────┼───────────────┼──────────────────────┼────────────────┘
+         │               │                      │
+         ▼               ▼                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    API LAYER (FastAPI)                           │
+│  /claims  /claims/{id}/investigate  /chat  /analytics           │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+┌────────────────┐ ┌──────────────┐ ┌──────────────────┐
+│  ML PIPELINE   │ │AGENTIC LAYER │ │ EVIDENCE SYSTEMS │
+│                │ │              │ │                  │
+│ Feature Engine │ │ Triage Agent │ │ NCCI Rules Engine│
+│ XGBoost Scorer │ │ Evidence     │ │ (structured)     │
+│ IF Novelty     │ │   Agent      │ │                  │
+│ SHAP Explainer │ │ Rationale    │ │ RAG Retriever    │
+│ Rules Baseline │ │   Agent      │ │ (CMS policy text)│
+│                │ │ Orchestrator │ │                  │
+└───────┬────────┘ └──────┬───────┘ └────────┬─────────┘
+        │                 │                   │
+        ▼                 ▼                   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     DATA LAYER                                   │
+│  Claims (Parquet/SQLite)  │  NCCI (CSV)  │  Policy (ChromaDB)  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.2 Technology Stack
@@ -164,20 +200,23 @@ data/
 | **Frontend** | Next.js 14 + Tailwind CSS + shadcn/ui | Modern, fast, great component library |
 | **API** | FastAPI (Python) | Async, fast, auto-docs, ML-ecosystem native |
 | **ML Pipeline** | scikit-learn, XGBoost, SHAP | Industry-standard, explainable, fast iteration |
+| **NCCI Rules Engine** | Pandas/custom Python | Structured lookups with modifier logic |
 | **RAG System** | ChromaDB + LangChain | Lightweight vector store, no infra overhead |
 | **Embeddings** | OpenAI `text-embedding-3-small` | Cost-effective, high quality |
 | **LLM** | OpenAI GPT-4o or Anthropic Claude Sonnet | Best balance of quality/speed/cost for agents |
-| **Agentic Framework** | LangGraph | Stateful multi-agent orchestration with built-in checkpoints |
+| **Agentic Framework** | LangGraph | Stateful sequential orchestration with state passing |
 | **Data Processing** | Pandas + Polars | Fast local processing; Spark-compatible patterns |
-| **Storage** | Parquet files + SQLite + ChromaDB | Zero-infra, portable, production-pattern-compatible |
-| **Data Generation** | Synthea + custom Python injectors | Realistic synthetic healthcare data |
+| **Storage** | Parquet files + SQLite + ChromaDB | Zero-infra, portable |
+| **Data Generation** | Synthea + custom Python injectors | Synthetic healthcare data |
 
-### 3.3 Why This Stack Is Abacus-Ready
+### 3.3 Abacus-Compatible Patterns
 
-- **Parquet + medallion schema** mirrors Abacus's Databricks lakehouse directly
+These are **architecture patterns**, not production-ready integrations:
+
+- **Parquet + medallion schema** mirrors Abacus's Databricks lakehouse layout
 - **FastAPI** is a standard Python backend — trivially containerized for cloud deployment
-- **ChromaDB** can be swapped for Databricks Vector Search in production
-- **LangGraph agents** are model-agnostic — swap OpenAI for Azure OpenAI (Abacus's likely provider)
+- **ChromaDB** follows the same API pattern as Databricks Vector Search
+- **LangGraph agents** are model-agnostic — swap OpenAI for Azure OpenAI
 - **Feature engineering in Pandas/Polars** uses patterns directly portable to PySpark
 
 ---
@@ -186,222 +225,272 @@ data/
 
 ### 4.1 Feature Engineering
 
-Three levels of features, each progressively more powerful:
+All features are computed **point-in-time** using strict lookback windows. For each claim, only data available before that claim's service date is used for aggregate features. This prevents temporal leakage.
 
 **Claim-Level Features (per claim):**
 - `charge_amount`, `allowed_amount`, `paid_amount`, `charge_to_allowed_ratio`
 - `num_procedure_codes`, `num_diagnosis_codes`, `num_modifiers`
 - `days_between_service_and_submission`
 - `place_of_service_encoded`
-- `procedure_complexity_score` (derived from CPT hierarchy)
-- `diagnosis_procedure_coherence_score` (embedding similarity between diagnosis and procedure descriptions)
+- `procedure_complexity_score` (derived from CPT/HCPCS hierarchy)
+- `has_ncci_conflict` (binary: does this claim contain a code pair flagged by NCCI without valid modifier?)
+- `modifier_count`, `modifier_59_present` (modifier usage patterns)
 
-**Provider-Level Features (aggregated per provider, joined to claims):**
-- `provider_avg_charge`, `provider_claim_volume_30d`, `provider_specialty_charge_percentile`
-- `provider_unique_patients_30d`, `provider_denial_rate_historical`
+**Provider-Level Features (point-in-time aggregated, joined to claims):**
+- `provider_avg_charge_30d`, `provider_claim_volume_30d`, `provider_specialty_charge_percentile`
+- `provider_unique_patients_30d`
 - `provider_procedure_concentration` (HHI of procedure code distribution)
-- `provider_peer_deviation` (z-score vs. same-specialty peers)
+- `provider_peer_deviation` (z-score vs. same-specialty peers in lookback window)
 
-**Member-Level Features (aggregated per member, joined to claims):**
+**Member-Level Features (point-in-time aggregated, joined to claims):**
 - `member_claim_frequency_90d`, `member_unique_providers_90d`
-- `member_avg_charge`, `member_chronic_condition_count`
-- `member_historical_anomaly_rate`
+- `member_avg_charge_90d`, `member_chronic_condition_count`
 
-### 4.2 Model Architecture — Ensemble Approach
+**Removed features** (from original spec):
+- ~~`member_historical_anomaly_rate`~~ — label leakage in synthetic data
+- ~~`provider_denial_rate_historical`~~ — not available in synthetic data
+- ~~`diagnosis_procedure_coherence_score`~~ — medical appropriateness is not semantic similarity; this feature would be noisy and misleading
+
+### 4.2 Model Architecture — Dual-Signal Approach
 
 ```
                     ┌─────────────────┐
                     │  Input Features  │
                     └────────┬────────┘
                              │
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-    │  Isolation    │ │   XGBoost    │ │  Autoencoder │
-    │  Forest       │ │  Classifier  │ │  (recon.     │
-    │ (unsupervised)│ │ (supervised) │ │   error)     │
-    └──────┬───────┘ └──────┬───────┘ └──────┬───────┘
-           │                │                │
-           ▼                ▼                ▼
-    ┌─────────────────────────────────────────────┐
-    │         Ensemble Meta-Learner               │
-    │   (Weighted average with learned weights)    │
-    └─────────────────────┬───────────────────────┘
-                          │
-                          ▼
-                 ┌─────────────────┐
-                 │  Risk Score     │
-                 │  (0-100) +      │
-                 │  SHAP values    │
-                 └─────────────────┘
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+    ┌──────────────────┐          ┌──────────────────┐
+    │     XGBoost       │          │  Isolation Forest │
+    │   (supervised)    │          │  (unsupervised)   │
+    │                  │          │                  │
+    │  Primary risk    │          │  Population      │
+    │  score (0-100)   │          │  novelty score   │
+    │  + SHAP values   │          │  (0-100)         │
+    └────────┬─────────┘          └────────┬─────────┘
+             │                             │
+             ▼                             ▼
+    ┌──────────────────────────────────────────────┐
+    │        DISPLAYED SIDE BY SIDE IN UI           │
+    │  XGBoost: "Known-pattern risk" + explanation  │
+    │  IF: "Population unusualness" signal           │
+    └──────────────────────────────────────────────┘
 ```
 
-**Why three models:**
-- **Isolation Forest** catches novel anomalies that don't match known patterns (unsupervised — no labels needed)
-- **XGBoost** leverages the injected anomaly labels for high-precision detection of known fraud types (supervised)
-- **Autoencoder** learns normal claim distributions and flags high reconstruction error (semi-supervised, catches subtle deviations)
+**Why two separate models, not an ensemble:**
+- **XGBoost** detects known anomaly patterns from the labeled data. SHAP `TreeExplainer` provides faithful, exact feature attributions for every prediction. This is the primary score shown to investigators.
+- **Isolation Forest** detects statistical outliers regardless of labels. Reported as a separate "novelty score" — a complementary signal, not blended into the XGBoost score. If it adds no actionable value during testing, it gets cut from the UI.
 
-The ensemble meta-learner combines all three, weighted by validation performance. This gives you the best of both worlds: catching known patterns AND novel anomalies.
+**No autoencoder, no meta-learner.** The original ensemble was criticized for making SHAP explanations unfaithful. This dual-signal approach is cleaner: one score is fully explainable (XGBoost+SHAP), the other is a separate unsupervised signal.
 
-### 4.3 Explainability (SHAP)
+### 4.3 Rules Baseline & Ablation
 
-Every risk score comes with SHAP feature attributions, answering "why was this claim flagged?":
+A **deterministic rules baseline** is implemented to prove the ML model adds value beyond simple checks:
+
+```
+Rules baseline:
+  - Flag claims with NCCI code-pair violations (no valid modifier)
+  - Flag claims where charge > 2x specialty average
+  - Flag claims with exact-duplicate (same provider, member, procedure, +-1 day)
+```
+
+**Ablation comparison (shown in analytics):**
+
+| Method | What it catches |
+|---|---|
+| Rules baseline | Obvious violations detectable by deterministic checks |
+| Isolation Forest | Statistical outliers regardless of rules |
+| XGBoost | Pattern combinations rules miss (e.g., subtle upcoding within same category, volume patterns) |
+
+This proves the ML adds incremental value. If XGBoost doesn't beat the rules baseline, that's an honest finding worth reporting.
+
+### 4.4 Explainability (SHAP)
+
+SHAP `TreeExplainer` on XGBoost provides **faithful, exact feature attributions**:
 - Top 5 contributing features per claim
 - Feature importance rendered as a waterfall chart in the UI
-- Natural language summary generated by the LLM from SHAP values (e.g., "This claim was flagged primarily because the charge amount ($8,450) is 3.2 standard deviations above the provider's peer group average for this procedure, and the diagnosis-procedure coherence score is unusually low.")
+- Natural language summary generated by the LLM from SHAP values (e.g., "This claim was flagged primarily because the charge amount ($8,450) is 3.2 standard deviations above the provider's peer group average for this procedure.")
 
-### 4.4 Model Training & Evaluation
+The SHAP explanation covers **only the XGBoost score**, not the IF novelty score. This is intentionally transparent — we explain what we can explain faithfully.
 
-**Train/validation/test split:** 70/15/15, stratified by anomaly type to ensure all patterns are represented.
+### 4.5 Model Training & Evaluation
+
+**Grouped temporal split:**
+1. Sort all claims by service_date
+2. Split temporally: first 70% of dates → train, next 15% → validation, last 15% → test
+3. Within each split, ensure no provider_id appears in both train and test (grouped split)
+4. This prevents both temporal leakage and provider-level information leakage
+
+**Point-in-time feature construction:** All aggregate features (provider stats, member stats) are computed using only claims from before the target claim's service date. No future information leaks into features.
 
 **Evaluation metrics:**
-- AUC-ROC (primary — target > 0.85)
-- Precision-Recall curve (critical for imbalanced data — fraud is rare)
+- AUC-ROC (primary — target > 0.85 on synthetic data)
+- Precision-Recall curve (critical for imbalanced data)
 - Precision@K (how many of the top K flagged claims are actual anomalies)
-- Per-anomaly-type recall (can we detect each pattern?)
+- Per-anomaly-type recall (can we detect each of the 3 patterns?)
+- **Ablation vs. rules baseline** (lift metric — what does XGBoost add?)
 
-**Model registry:** Simple versioned model storage (joblib serialization + metadata JSON) — mimics MLflow patterns without the infrastructure overhead.
+All metrics are explicitly framed as **performance on synthetic data with injected anomalies**. They demonstrate the pipeline's capability, not production accuracy.
 
 ---
 
-## 5. RAG System — Policy Intelligence
+## 5. Evidence Systems
 
-### 5.1 Document Processing Pipeline
+### 5.1 NCCI Rules Engine (Structured, Not RAG)
 
 ```
-Raw Policy PDFs/HTML
-        │
-        ▼
-┌──────────────────┐
-│  Document Parser  │  (markitdown / PyPDF2 / BeautifulSoup)
-│  → clean markdown │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  Semantic Chunker │  (split by section headers + paragraph boundaries)
-│  ~500 tokens/chunk│  (with 50-token overlap)
-│  + metadata tags  │  (source, chapter, section, topic, code_references)
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  Embedding        │  (OpenAI text-embedding-3-small)
-│  + Index          │  (ChromaDB persistent collection)
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  NCCI Rules Index │  (Structured: code_pair → rule, stored separately)
-│  (CSV → lookup)   │  (Direct lookup, not vector search)
-└──────────────────┘
+Query: (code_1=27447, code_2=27446, date=2026-03-15, modifiers=[59])
+  │
+  ▼
+┌──────────────────────────────────────┐
+│  NCCI Practitioner PTP Lookup        │
+│  1. Find matching code pair          │
+│  2. Check effective_date range       │
+│  3. Read modifier_indicator:         │
+│     0 = edit cannot be bypassed      │
+│     1 = modifier can bypass edit     │
+│     9 = not applicable               │
+│  4. If indicator=1, check if claim   │
+│     has valid modifier (-59, -XE,    │
+│     -XS, -XP, -XU)                  │
+│  5. Return: allowed/denied + reason  │
+└──────────────────────────────────────┘
 ```
 
-### 5.2 Hybrid Retrieval Strategy
+This is a **deterministic rules engine** — no LLM, no embeddings, no approximation. It returns structured results: `{code_pair, edit_type, modifier_indicator, modifier_present, result: "violation"|"allowed"|"no_edit_found", rationale}`.
 
-Not all lookups are semantic — the system uses the right retrieval method per query type:
+### 5.2 RAG System (CMS Policy Text)
 
-| Query Type | Retrieval Method | Example |
-|---|---|---|
-| "What does CMS policy say about billing for X?" | Semantic vector search (top-5 chunks) | Open-ended policy questions |
-| "Are CPT 27447 and 27446 allowed on same day?" | Direct NCCI edit lookup (structured) | Code pair conflict checks |
-| "What are the rules for modifier -59?" | Hybrid: keyword filter on "modifier 59" + semantic ranking | Specific rule lookups |
-| "Show me relevant fraud indicators for upcoding" | Semantic search with metadata filter (topic=fraud) | Category-level policy retrieval |
+**Document Processing:**
+```
+CMS Manual PDFs/HTML → Document Parser (markitdown/PyPDF2)
+  → Semantic Chunker (~500 tokens, 50-token overlap)
+  → Metadata tags (source, chapter, section, topic)
+  → OpenAI text-embedding-3-small → ChromaDB
+```
 
-### 5.3 Retrieval Quality
+**Retrieval Strategy:**
 
-- **Reranking:** After initial retrieval, a cross-encoder reranker (or LLM-based reranker) selects the most relevant chunks
-- **Citation tracking:** Every chunk carries source metadata (document, page, section) — all agent outputs cite their sources
-- **Evaluation:** Build a small golden set (~50 question-answer pairs from policy docs) to measure retrieval precision/recall
+| Query Type | Method |
+|---|---|
+| "What does CMS say about billing for X?" | Semantic vector search (top-5 chunks) |
+| "What are the rules for modifier -59?" | Keyword filter + semantic ranking |
+| "Fraud indicators for upcoding" | Semantic search with metadata filter (topic=fraud) |
+
+**Quality controls:**
+- Citation tracking: every chunk carries source metadata (document, chapter, section)
+- Golden evaluation set: ~50 question-answer pairs from CMS manual chapters, measuring precision@5
+- If basic retrieval proves insufficient during testing, add LLM-based reranking (not pre-committed)
+
+### 5.3 What's NOT in the Evidence System
+
+Explicitly excluded (and acknowledged in the demo):
+- AMA CPT Professional Edition guidelines (copyrighted)
+- NCDs and LCDs (local coverage decisions — payer-specific)
+- Payer-specific medical policies and coverage criteria
+- Clinical documentation / medical records
+
+The architecture is **extensible** — these sources plug into the same retrieval interface. The demo acknowledges where they would go.
 
 ---
 
 ## 6. Agentic Layer — Multi-Agent Investigation
 
-### 6.1 Agent Architecture (LangGraph)
+### 6.1 Agent Architecture (LangGraph Sequential Chain)
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    ORCHESTRATOR (LangGraph)                    │
-│                                                                │
-│   ┌─────────┐     ┌──────────┐     ┌────────────┐            │
-│   │ TRIAGE  │────▶│ EVIDENCE │────▶│ RATIONALE  │            │
-│   │ AGENT   │     │ AGENT    │     │ AGENT      │            │
-│   └─────────┘     └──────────┘     └────────────┘            │
-│        │               │                │                     │
-│        ▼               ▼                ▼                     │
-│   Classifies      Retrieves        Generates                 │
-│   anomaly type,   policy rules,    audit-ready               │
-│   sets priority,  NCCI edits,      rationale with            │
-│   determines      coding context,  citations and             │
-│   investigation   historical       recommended               │
-│   path            patterns         actions                   │
-│                                                                │
-│   ┌──────────────────────────────────────────────────────┐    │
-│   │              SHARED STATE (LangGraph State)          │    │
-│   │  claim_data, risk_score, shap_values, anomaly_type,  │    │
-│   │  evidence_chunks, policy_citations, rationale,       │    │
-│   │  investigation_status, human_feedback                │    │
-│   └──────────────────────────────────────────────────────┘    │
+│              ORCHESTRATOR (LangGraph Sequential)              │
+│                                                               │
+│   ┌─────────┐     ┌──────────┐     ┌────────────┐           │
+│   │ TRIAGE  │────▶│ EVIDENCE │────▶│ RATIONALE  │           │
+│   │ AGENT   │     │ AGENT    │     │ AGENT      │           │
+│   └─────────┘     └──────────┘     └────────────┘           │
+│        │               │                │                    │
+│        ▼               ▼                ▼                    │
+│   Classifies       Gathers          Synthesizes             │
+│   anomaly type,    evidence via      investigation          │
+│   ROUTES to        type-specific     rationale with         │
+│   different        tools             citations              │
+│   evidence paths                                             │
+│                                                               │
+│   ┌─────────────────────────────────────────────────────┐    │
+│   │           SHARED STATE (LangGraph State)            │    │
+│   │  claim_data, xgboost_score, if_novelty_score,       │    │
+│   │  shap_values, anomaly_type, evidence_path,          │    │
+│   │  evidence_results, rationale, investigation_status   │    │
+│   └─────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
+Simple sequential chain. No complex branching or looping. State flows forward through 3 nodes.
+
 ### 6.2 Agent Specifications
 
-**Triage Agent**
-- **Input:** Claim data + ML risk score + SHAP feature attributions
-- **Task:** Classify the suspected anomaly type (upcoding, unbundling, duplicate, phantom, impossible combo, provider outlier), assign investigation priority (Critical/High/Medium/Low), and determine which evidence paths to pursue
-- **Output:** `{anomaly_type, confidence, priority, investigation_plan}`
-- **LLM prompt strategy:** Few-shot examples of each anomaly type with SHAP patterns that characterize them
+**Triage Agent — Classification + Routing**
+- **Input:** Claim data + XGBoost risk score + SHAP feature attributions + IF novelty score
+- **Task:** Classify the suspected anomaly type, assign investigation priority, and **determine which evidence tools to invoke** (this is its non-redundant value: different anomaly types need different evidence paths)
+- **Routing logic:**
+  - Suspected NCCI violation → Evidence Agent uses `lookup_ncci_edits()` as primary tool
+  - Suspected upcoding → Evidence Agent uses `search_policy_docs()` for billing rules + `get_provider_history()` for peer comparison
+  - Suspected duplicate → Evidence Agent uses `get_claim_duplicates()` + `search_policy_docs()` for duplicate billing rules
+- **Output:** `{anomaly_type, confidence, priority, evidence_tools_to_use[]}`
+- **Strict JSON output schema enforced**
 
-**Evidence Agent**
-- **Input:** Triage output + claim details (procedure codes, diagnosis codes, provider info)
-- **Task:** Query the RAG system for relevant policy rules. For code-pair issues, perform NCCI edit lookups. Retrieve historical patterns for the provider/member. Compile all evidence into a structured evidence package.
+**Evidence Agent — Tool-Using Retrieval**
+- **Input:** Triage output + claim details
+- **Task:** Execute the evidence tools specified by triage. Compile results into structured evidence package.
+- **Tools available:**
+  - `lookup_ncci_edits(code_1, code_2, modifiers, date)` → NCCI rules engine
+  - `search_policy_docs(query, filters)` → RAG retrieval
+  - `get_provider_history(provider_id, lookback_days)` → provider billing patterns from DB
+  - `get_claim_duplicates(member_id, procedure_code, date_range)` → potential duplicate claims from DB
 - **Output:** `{policy_citations[], ncci_findings[], historical_context, evidence_summary}`
-- **Tools available:** `search_policy_docs()`, `lookup_ncci_edits()`, `get_provider_history()`, `get_member_history()`
+- **Strict JSON output schema enforced**
 
-**Rationale Agent**
+**Rationale Agent — Synthesis + Conversational Follow-Up**
 - **Input:** Full investigation state (claim + triage + evidence)
-- **Task:** Synthesize all findings into a coherent, audit-ready investigation rationale. Must cite specific policy sections. Must include: summary of findings, supporting evidence, policy basis, recommended action, and confidence level.
+- **Task:** Synthesize all findings into a coherent investigation-support rationale. Cite specific policy sections. Include: summary, supporting evidence, policy basis, recommended next step, confidence level.
+- **Also handles embedded chat:** When invoked in conversational mode (via the claim detail chat), it has access to the same tools as the evidence agent for follow-up questions.
 - **Output:** `{rationale_text, citations[], recommended_action, confidence, review_needed}`
-- **Guardrails:** Must cite at least 2 policy sources. Must not recommend a final determination — always recommends human review for final decision. Confidence score must reflect evidence strength.
+- **Guardrails:** Must cite all relevant policy sources found (not a minimum count — avoids citation padding). Must not recommend a final determination. Confidence must reflect evidence strength.
+- **Strict JSON output schema enforced**
 
 ### 6.3 Orchestration Flow
 
 ```
-1. Claim flagged by ML pipeline (risk_score > threshold)
+1. Claim flagged by ML pipeline (xgboost_score > threshold)
          │
          ▼
-2. Triage Agent classifies and prioritizes
+2. Triage Agent classifies anomaly type + selects evidence tools
          │
-         ├── If confidence < 0.5 → route to human immediately
-         │
-         ▼
-3. Evidence Agent gathers policy rules and historical context
-         │
-         ├── If contradictory evidence found → flag for human review
+         ├── If triage confidence < 0.5 → mark as "needs manual triage"
          │
          ▼
-4. Rationale Agent generates audit-ready narrative
+3. Evidence Agent gathers evidence using triage-specified tools
          │
          ▼
-5. Result stored with full evidence chain
+4. Rationale Agent generates investigation-support narrative
          │
          ▼
-6. Investigator reviews in UI, provides feedback (accept/reject/modify)
+5. Result stored with full evidence chain + all agent outputs visible in UI
          │
          ▼
-7. Feedback stored for continuous improvement
+6. Investigator reviews, provides feedback (accept/reject/modify)
+         │
+         ▼
+7. Feedback persisted for future improvement
 ```
 
 ### 6.4 Human-in-the-Loop Design
 
-The system is designed as an **investigation assistant**, not an autonomous decision-maker:
+The system is an **investigation assistant**, not an autonomous decision-maker:
 - All flagged claims require human review before any action
 - Investigators can accept, reject, or modify the AI's rationale
-- Rejection feedback is stored and can be used to improve prompts/models
+- Rejection feedback is stored for prompt/model improvement
 - The UI clearly marks AI-generated content vs. human-confirmed decisions
 - Confidence scores are transparent — low-confidence findings are visually distinguished
+- Every agent step is observable in the UI (triage output, evidence gathered, rationale generated)
 
 ---
 
@@ -411,31 +500,25 @@ The system is designed as an **investigation assistant**, not an autonomous deci
 
 ```
 # Claims & Investigation
-GET    /api/claims                        # List claims with filters (status, risk, date, provider)
-GET    /api/claims/{claim_id}             # Get claim details + features + risk score
-POST   /api/claims/{claim_id}/investigate # Trigger agentic investigation pipeline
+GET    /api/claims                          # List claims with filters (status, risk, date, provider)
+GET    /api/claims/{claim_id}               # Claim details + features + scores
+POST   /api/claims/{claim_id}/investigate   # Trigger agentic investigation
 GET    /api/claims/{claim_id}/investigation # Get investigation results
 PATCH  /api/claims/{claim_id}/investigation # Investigator feedback (accept/reject/modify)
 
-# Chat (Investigation Assistant)
-POST   /api/chat                          # Send message in investigation context
-       body: { claim_id?, message, conversation_id }
-       response: SSE stream of agent response
+# Embedded Chat (claim-scoped)
+POST   /api/chat                            # Send message in claim investigation context
+       body: { claim_id, message, conversation_id }
+       response: SSE stream of rationale agent response
 
-# Analytics & Metrics
-GET    /api/analytics/overview            # Dashboard summary stats
-GET    /api/analytics/model-performance   # ML model metrics (AUC, precision, recall)
-GET    /api/analytics/anomaly-distribution # Breakdown by anomaly type
-GET    /api/analytics/provider-risk       # Provider-level risk rankings
-GET    /api/analytics/efficiency          # Investigation time metrics (simulated)
+# Analytics (precomputed)
+GET    /api/analytics/overview              # Dashboard summary stats
+GET    /api/analytics/model-performance     # ML metrics + rules baseline ablation
+GET    /api/analytics/anomaly-distribution  # Breakdown by anomaly type
 
-# Pipeline Management
-POST   /api/pipeline/run                  # Trigger ML pipeline re-run
-GET    /api/pipeline/status               # Pipeline health and last run info
-
-# RAG / Knowledge Base
-GET    /api/knowledge/search              # Direct policy document search
-GET    /api/knowledge/ncci/{code_pair}    # NCCI edit lookup
+# NCCI Lookup
+GET    /api/ncci/{code_1}/{code_2}          # Direct NCCI edit lookup with modifier support
+       query params: modifiers, service_date
 ```
 
 ### 7.2 Response Patterns
@@ -447,7 +530,8 @@ All endpoints follow consistent response envelopes:
   "data": { ... },
   "metadata": {
     "timestamp": "2026-04-09T10:30:00Z",
-    "processing_time_ms": 245
+    "processing_time_ms": 245,
+    "data_source": "synthetic"
   }
 }
 ```
@@ -458,33 +542,33 @@ Investigation results include full provenance:
 {
   "data": {
     "claim_id": "CLM-2026-00482",
-    "risk_score": 87,
-    "anomaly_type": "upcoding",
+    "xgboost_risk_score": 87,
+    "if_novelty_score": 72,
     "triage": {
+      "anomaly_type": "upcoding",
       "priority": "high",
       "confidence": 0.92,
-      "investigation_plan": "..."
+      "evidence_tools_used": ["search_policy_docs", "get_provider_history"]
     },
     "evidence": {
       "policy_citations": [
         {
           "text": "...",
-          "source": "CMS Claims Processing Manual, Ch. 23, Sec 30.1",
+          "source": "CMS Claims Processing Manual, Ch. 12, Sec 30.6.1",
           "relevance_score": 0.94
         }
       ],
-      "ncci_findings": [...],
-      "historical_context": "..."
+      "ncci_findings": null,
+      "provider_context": "Provider bills CPT 27447 at 3.1x specialty average..."
     },
     "rationale": {
-      "text": "This claim for CPT 27447 (total knee replacement) submitted by Dr. Smith shows indicators consistent with upcoding...",
-      "citations": ["CMS-CPM-23-30.1", "NCCI-2024-Q3-27447"],
+      "text": "This claim shows indicators consistent with upcoding...",
+      "citations": ["CMS-CPM-12-30.6.1"],
       "recommended_action": "Refer for clinical review",
       "confidence": 0.88,
       "review_needed": true
     },
-    "status": "pending_review",
-    "investigator_feedback": null
+    "status": "pending_review"
   }
 }
 ```
@@ -496,69 +580,64 @@ Investigation results include full provenance:
 ### 8.1 Page Structure
 
 ```
-/                           → Dashboard (overview metrics, risk distribution, recent flags)
-/claims                     → Claims Explorer (filterable table, risk heatmap)
-/claims/[id]                → Claim Detail (risk breakdown, SHAP waterfall, evidence trail)
-/claims/[id]/investigation  → Investigation View (agent results, rationale, feedback form)
-/chat                       → Investigation Chat (conversational claim investigation)
-/analytics                  → Model Performance & Efficiency Metrics
-/knowledge                  → Knowledge Base Explorer (search policy docs, browse NCCI)
+/                    → Dashboard (overview metrics, risk distribution, recent flags)
+/claims              → Claims Explorer (filterable table, risk heatmap)
+/claims/[id]         → Claim Detail + Investigation + Embedded Chat
+/analytics           → Model Performance, Ablation, Efficiency Metrics
 ```
+
+**Cut from original spec:** Standalone `/chat` page and `/knowledge` page. Chat is now embedded in claim detail. Knowledge base exploration is not a separate page.
 
 ### 8.2 Dashboard Overview
 
-The main dashboard provides at-a-glance situational awareness:
+At-a-glance situational awareness:
 
-- **KPI Cards:** Total claims processed, flagged count, investigation rate, avg risk score, estimated savings
-- **Risk Distribution Chart:** Histogram of risk scores across all claims
-- **Anomaly Type Breakdown:** Donut chart showing flagged claims by category (upcoding, unbundling, etc.)
-- **Top Flagged Claims Table:** Sortable table with claim ID, risk score, anomaly type, status, and quick-investigate action
-- **Provider Risk Heatmap:** Top providers by aggregate risk score
-- **Trend Line:** Flags over time (simulated for demo)
+- **KPI Cards:** Total claims processed, flagged count, investigation rate, avg risk score
+- **Risk Distribution Chart:** Histogram of XGBoost risk scores
+- **Anomaly Type Breakdown:** Donut chart — upcoding vs. NCCI violations vs. duplicates
+- **Top Flagged Claims Table:** Sortable with claim ID, risk score, anomaly type, status, quick-investigate action
+- **Provider Risk View:** Top providers by aggregate risk score
+- **Synthetic Data Banner:** Persistent, subtle banner reminding viewers this is demo data
 
 ### 8.3 Claim Detail & Investigation View
 
-When an investigator clicks into a claim:
+The core workflow screen. When an investigator clicks into a claim:
 
 **Left panel — Claim Facts:**
 - Member demographics, provider info, service details
-- Procedure and diagnosis codes with descriptions
+- Procedure and diagnosis codes with HCPCS descriptions
 - Charge breakdown (billed vs. allowed vs. paid)
+- Modifiers used
 
 **Center panel — AI Investigation:**
-- Risk score gauge (0-100) with color coding
-- SHAP waterfall chart showing top contributing features
-- Anomaly type classification with confidence
+- Dual score display: XGBoost risk score (0-100) with SHAP waterfall + IF novelty score (separate gauge)
+- Triage classification with confidence and evidence tools used
 - AI-generated rationale (markdown with inline citations)
 - Linked policy evidence (expandable cards with source snippets)
-- NCCI edit findings (if applicable)
+- NCCI edit findings (if applicable — structured, not AI-generated)
+- Each agent step visible (triage → evidence → rationale)
 
-**Right panel — Actions:**
+**Right panel — Actions & Chat:**
 - Accept / Reject / Modify buttons
 - Free-text feedback field
 - Investigation history timeline
-- "Ask a question" quick-chat launcher
+- **Embedded chat** — ask follow-up questions about this claim; rationale agent responds with tool access and citations
 
-### 8.4 Investigation Chat
+### 8.4 Analytics Page
 
-A conversational interface where investigators can ask follow-up questions about any claim:
-
-- Claim context is automatically loaded
-- Supports questions like:
-  - "Why is this claim's charge so much higher than the average?"
-  - "What does CMS policy say about billing 27447 and 27446 together?"
-  - "Show me this provider's billing history for the last 6 months"
-  - "Are there other similar claims from this provider?"
-- Responses include citations and can reference SHAP values, policy docs, and historical data
-- Conversation history is persisted per claim
+Precomputed metrics displayed with Recharts:
+- Model performance: AUC-ROC curve, precision-recall curve (with "synthetic data" label)
+- **Ablation chart:** Rules baseline vs. IF vs. XGBoost — showing incremental lift
+- Per-anomaly-type detection rates
+- Investigation time metrics (simulated comparison: manual vs. AI-assisted)
 
 ### 8.5 UI Design Principles
 
-- **Dark professional theme** — appropriate for a healthcare analytics tool, not a consumer app
-- **Data-dense but scannable** — leverage tables, cards, and charts; minimize empty space
-- **Clear AI attribution** — all AI-generated content has a subtle visual marker and "AI Generated" label
-- **Citation-forward** — every AI claim links to its source; investigators can click through to the full policy text
-- **Responsive** — works on desktop (primary) and tablet
+- **Dark professional theme** — appropriate for a healthcare analytics tool
+- **Data-dense but scannable** — tables, cards, charts; minimize empty space
+- **Clear AI attribution** — all AI-generated content has "AI Generated" label
+- **Citation-forward** — every AI claim links to its source
+- **Honest framing** — "Synthetic Data Demo" badge visible on all data-dependent views
 
 ---
 
@@ -568,71 +647,69 @@ A conversational interface where investigators can ask follow-up questions about
 payment-integrity-ai/
 │
 ├── README.md
-├── docker-compose.yml              # One-command local setup
-├── .env.example                    # Required API keys template
+├── docker-compose.yml
+├── .env.example
 │
 ├── backend/
-│   ├── pyproject.toml              # Python dependencies (Poetry/uv)
+│   ├── pyproject.toml
 │   ├── app/
-│   │   ├── main.py                 # FastAPI app entry point
-│   │   ├── config.py               # Settings and environment config
+│   │   ├── main.py
+│   │   ├── config.py
 │   │   ├── api/
 │   │   │   ├── routes/
-│   │   │   │   ├── claims.py       # Claims CRUD + investigation triggers
-│   │   │   │   ├── chat.py         # SSE streaming chat endpoint
-│   │   │   │   ├── analytics.py    # Dashboard metrics
-│   │   │   │   ├── pipeline.py     # ML pipeline management
-│   │   │   │   └── knowledge.py    # RAG search + NCCI lookup
-│   │   │   └── dependencies.py     # Shared dependencies (DB, agents, etc.)
+│   │   │   │   ├── claims.py
+│   │   │   │   ├── chat.py          # SSE streaming (claim-scoped)
+│   │   │   │   ├── analytics.py
+│   │   │   │   └── ncci.py          # Structured NCCI lookup endpoint
+│   │   │   └── dependencies.py
 │   │   │
 │   │   ├── ml/
-│   │   │   ├── features.py         # Feature engineering logic
-│   │   │   ├── models.py           # Model training (IF, XGBoost, Autoencoder)
-│   │   │   ├── ensemble.py         # Ensemble meta-learner
-│   │   │   ├── explainer.py        # SHAP explanation generation
-│   │   │   └── pipeline.py         # End-to-end training + scoring pipeline
+│   │   │   ├── features.py          # Point-in-time feature engineering
+│   │   │   ├── models.py            # XGBoost + Isolation Forest training
+│   │   │   ├── rules_baseline.py    # Deterministic rules for ablation
+│   │   │   ├── explainer.py         # SHAP TreeExplainer on XGBoost
+│   │   │   └── pipeline.py          # End-to-end training + scoring
 │   │   │
-│   │   ├── rag/
-│   │   │   ├── ingest.py           # Document parsing + chunking
-│   │   │   ├── embeddings.py       # Embedding generation + ChromaDB indexing
-│   │   │   ├── retriever.py        # Hybrid retrieval (semantic + keyword + NCCI)
-│   │   │   └── reranker.py         # Cross-encoder reranking
+│   │   ├── evidence/
+│   │   │   ├── ncci_engine.py       # Structured NCCI lookup with modifier logic
+│   │   │   ├── rag_ingest.py        # Document parsing + chunking
+│   │   │   ├── rag_embeddings.py    # Embedding generation + ChromaDB
+│   │   │   └── rag_retriever.py     # Semantic retrieval for policy text
 │   │   │
 │   │   ├── agents/
-│   │   │   ├── orchestrator.py     # LangGraph workflow definition
-│   │   │   ├── triage.py           # Triage agent
-│   │   │   ├── evidence.py         # Evidence retrieval agent
-│   │   │   ├── rationale.py        # Rationale generation agent
-│   │   │   ├── chat_agent.py       # Conversational investigation agent
-│   │   │   ├── prompts/            # Prompt templates (versioned)
+│   │   │   ├── orchestrator.py      # LangGraph sequential chain
+│   │   │   ├── triage.py            # Classification + evidence routing
+│   │   │   ├── evidence.py          # Tool-using evidence retrieval
+│   │   │   ├── rationale.py         # Synthesis + conversational follow-up
+│   │   │   ├── prompts/
 │   │   │   │   ├── triage.md
 │   │   │   │   ├── evidence.md
-│   │   │   │   ├── rationale.md
-│   │   │   │   └── chat.md
-│   │   │   └── tools.py            # Agent tool definitions
+│   │   │   │   └── rationale.md
+│   │   │   └── tools.py             # Agent tool definitions
 │   │   │
 │   │   ├── db/
-│   │   │   ├── database.py         # SQLite connection + session management
-│   │   │   ├── models.py           # SQLAlchemy ORM models
-│   │   │   └── seed.py             # Initial data loading
+│   │   │   ├── database.py
+│   │   │   ├── models.py
+│   │   │   └── seed.py
 │   │   │
 │   │   └── utils/
-│   │       └── schemas.py          # Pydantic request/response models
+│   │       └── schemas.py
 │   │
 │   ├── data_generation/
-│   │   ├── generate_synthea.py     # Synthea runner + output processor
-│   │   ├── inject_anomalies.py     # Anomaly injection logic
-│   │   ├── calibrate.py            # CMS public data calibration
-│   │   └── validate.py             # Data quality checks on generated data
+│   │   ├── generate_synthea.py
+│   │   ├── inject_anomalies.py      # 3 anomaly types only
+│   │   ├── calibrate.py
+│   │   └── validate.py
 │   │
 │   ├── scripts/
-│   │   ├── setup_rag.py            # One-time RAG corpus ingestion
-│   │   ├── train_models.py         # Model training script
-│   │   └── seed_database.py        # Load processed data into SQLite
+│   │   ├── setup_evidence.py        # RAG ingestion + NCCI data load
+│   │   ├── train_models.py
+│   │   └── seed_database.py
 │   │
 │   └── tests/
 │       ├── test_features.py
 │       ├── test_models.py
+│       ├── test_ncci_engine.py
 │       ├── test_retriever.py
 │       ├── test_agents.py
 │       └── test_api.py
@@ -643,57 +720,56 @@ payment-integrity-ai/
 │   ├── tailwind.config.js
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── layout.tsx          # Root layout (dark theme, nav)
-│   │   │   ├── page.tsx            # Dashboard
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx             # Dashboard
 │   │   │   ├── claims/
-│   │   │   │   ├── page.tsx        # Claims explorer
+│   │   │   │   ├── page.tsx         # Claims explorer
 │   │   │   │   └── [id]/
-│   │   │   │       └── page.tsx    # Claim detail + investigation
-│   │   │   ├── chat/
-│   │   │   │   └── page.tsx        # Investigation chat
-│   │   │   ├── analytics/
-│   │   │   │   └── page.tsx        # Model metrics & efficiency
-│   │   │   └── knowledge/
-│   │   │       └── page.tsx        # Knowledge base explorer
+│   │   │   │       └── page.tsx     # Claim detail + investigation + chat
+│   │   │   └── analytics/
+│   │   │       └── page.tsx         # Model metrics & ablation
 │   │   │
 │   │   ├── components/
-│   │   │   ├── ui/                 # shadcn/ui base components
-│   │   │   ├── dashboard/          # Dashboard-specific components
-│   │   │   ├── claims/             # Claims table, filters, detail cards
-│   │   │   ├── investigation/      # Risk gauge, SHAP chart, rationale display
-│   │   │   ├── chat/               # Chat interface components
-│   │   │   └── charts/             # Recharts wrappers (risk distribution, trends)
+│   │   │   ├── ui/                  # shadcn/ui base components
+│   │   │   ├── dashboard/
+│   │   │   ├── claims/
+│   │   │   ├── investigation/       # Risk gauges, SHAP chart, rationale, agent steps
+│   │   │   ├── chat/                # Embedded chat components
+│   │   │   └── charts/              # Recharts wrappers
 │   │   │
 │   │   └── lib/
-│   │       ├── api.ts              # API client (fetch wrappers)
-│   │       └── types.ts            # TypeScript interfaces
+│   │       ├── api.ts
+│   │       └── types.ts
 │   │
 │   └── public/
-│       └── ...                     # Static assets
 │
 └── docs/
-    ├── architecture.md             # This design doc (condensed)
-    └── presentation/               # Demo script and slide content
+    ├── architecture.md
+    └── presentation/
 ```
 
 ---
 
 ## 10. End-to-End Data Flow
 
-### 10.1 Batch Pipeline (Data Ingestion → ML Scoring)
+### 10.1 Batch Pipeline (Data Ingestion -> ML Scoring)
 
 ```
-1. Synthea generates raw patient/claims data
+1. Synthea generates raw Medicare Part B professional claims
    │
-2. inject_anomalies.py adds fraud patterns with ground truth labels
+2. inject_anomalies.py adds 3 anomaly types with ground truth labels
    │
-3. Feature engineering computes claim/provider/member features
+3. Point-in-time feature engineering (strict lookback windows)
    │
-4. Ensemble model scores every claim (risk 0-100)
+4. Rules baseline flags deterministic violations
    │
-5. Claims + scores + features loaded into SQLite
+5. XGBoost scores every claim (risk 0-100) + SHAP values
    │
-6. High-risk claims (score > configurable threshold) marked as "needs_investigation"
+6. Isolation Forest scores novelty (0-100)
+   │
+7. Claims + scores + features loaded into SQLite
+   │
+8. High-risk claims (xgboost_score > threshold) marked "needs_investigation"
 ```
 
 ### 10.2 On-Demand Investigation (User-Triggered)
@@ -701,37 +777,33 @@ payment-integrity-ai/
 ```
 1. Investigator clicks "Investigate" on a flagged claim
    │
-2. FastAPI triggers LangGraph orchestrator
+2. FastAPI triggers LangGraph sequential chain
    │
-3. Triage Agent: classifies anomaly type, sets priority
+3. Triage Agent: classifies anomaly type, selects evidence tools
    │
-4. Evidence Agent: queries RAG for policy rules, checks NCCI edits,
-   │                pulls provider/member history
+4. Evidence Agent: executes selected tools (NCCI lookup, RAG search,
+   │                provider history, duplicate search)
    │
-5. Rationale Agent: synthesizes audit-ready narrative with citations
+5. Rationale Agent: synthesizes investigation-support narrative with citations
    │
-6. Results returned via API, rendered in UI
+6. All agent outputs returned via API, each step visible in UI
    │
-7. Investigator reviews, provides feedback
-   │
-8. Feedback persisted for model/prompt improvement
+7. Investigator reviews, provides feedback (accept/reject/modify)
 ```
 
-### 10.3 Chat Flow (Conversational Investigation)
+### 10.3 Embedded Chat (Claim-Scoped Follow-Up)
 
 ```
-1. Investigator opens chat (optionally in context of a specific claim)
+1. Investigator types question in claim detail chat panel
    │
-2. Message sent to /api/chat (SSE stream)
+2. Message sent to /api/chat with claim_id context (SSE stream)
    │
-3. Chat agent receives message + claim context + conversation history
+3. Rationale agent receives message + claim context + investigation state
    │
-4. Agent decides which tools to use:
+4. Agent uses tools as needed:
    │  - search_policy_docs() for policy questions
    │  - lookup_ncci_edits() for code pair queries
-   │  - get_claim_details() for claim-specific data
    │  - get_provider_history() for provider patterns
-   │  - explain_risk_score() for SHAP-based explanations
    │
 5. Response streamed back with citations
 ```
@@ -741,28 +813,24 @@ payment-integrity-ai/
 ## 11. Testing Strategy
 
 ### 11.1 Unit Tests
-- Feature engineering: verify correct computation of each feature
-- Anomaly injection: verify each pattern is injected correctly
+- Feature engineering: verify point-in-time correctness (no future leakage)
+- Anomaly injection: verify each of 3 patterns is injected correctly
+- NCCI engine: verify modifier logic (indicator=0 vs 1 vs 9)
 - RAG chunking: verify document parsing and chunk boundaries
-- NCCI lookup: verify correct code-pair rule retrieval
-- Agent prompts: verify prompt formatting with sample inputs
+- Rules baseline: verify deterministic flag logic
 
 ### 11.2 Integration Tests
-- ML pipeline end-to-end: raw data → features → model → scores
-- RAG pipeline: document → chunks → embeddings → retrieval → relevant results
-- Agent pipeline: claim → triage → evidence → rationale (mock LLM for speed)
-- API endpoints: request → response validation
+- ML pipeline end-to-end: raw data -> features -> model -> scores
+- Evidence pipeline: NCCI lookup + RAG retrieval for sample claims
+- Agent pipeline: claim -> triage -> evidence -> rationale (mock LLM for speed)
+- API endpoints: request -> response validation
 
 ### 11.3 Evaluation Tests
 - ML model performance: AUC-ROC, precision-recall, per-anomaly-type recall
+- **Ablation: XGBoost lift over rules baseline**
 - RAG retrieval quality: precision@5 on golden question set
 - Agent rationale quality: manual evaluation rubric on 50 sample claims
-- End-to-end latency: measure claim → rationale pipeline timing
-
-### 11.4 Frontend Tests
-- Component rendering (React Testing Library)
-- API integration (MSW mock service worker)
-- Key user flows (Playwright for critical paths: dashboard → claim → investigate → feedback)
+- End-to-end latency: claim -> rationale timing
 
 ---
 
@@ -770,62 +838,66 @@ payment-integrity-ai/
 
 ### 12.1 The Story Arc
 
-The demo follows a Payment Integrity investigator's workflow:
+1. **Open Dashboard** — "Here's the investigator's morning view. 847 Medicare Part B claims processed overnight. 52 flagged for investigation."
 
-1. **Open Dashboard** — "Here's your morning view. 847 claims processed overnight. 52 flagged for investigation. Estimated recoverable amount: $1.2M."
+2. **Explore Flagged Claims** — "Sort by risk score. This claim stands out — XGBoost risk 94, suspected upcoding."
 
-2. **Explore Flagged Claims** — "Let's sort by risk score. This claim stands out — risk score 94, suspected upcoding from an orthopedic provider."
+3. **Trigger Investigation** — "One click. Watch the agentic pipeline: triage classifies it as upcoding and routes to billing policy search + provider history... evidence agent gathers CMS manual citations... rationale agent synthesizes... done in 12 seconds."
 
-3. **Trigger Investigation** — "One click to investigate. Watch the AI work: triaging... gathering policy evidence... generating rationale... done in 12 seconds."
+4. **Review AI Rationale** — "The system cites CMS Claims Processing Manual Chapter 12 and found 7 similar claims from this provider. Every statement has a source link."
 
-4. **Review AI Rationale** — "The system found that this knee replacement claim (CPT 27447) was billed at $14,200 — 3.1x the specialty average. It cites CMS Claims Processing Manual Chapter 23, Section 30.1 and identified 7 similar claims from this provider in the last quarter."
+5. **Show Agent Transparency** — "Each agent step is visible. Triage chose these evidence tools because the SHAP features indicated charge deviation, not code-pair conflict. Different anomaly types get different investigation paths."
 
-5. **Ask Follow-Up Questions** — "Let me open the investigation chat: 'Are these two procedure codes allowed on the same date?' The AI checks NCCI edits and responds with a citation."
+6. **Ask Follow-Up** — "In the embedded chat: 'Are these two codes allowed on the same date?' The system checks NCCI edits directly — structured lookup, not AI guesswork — and responds with the specific edit rule."
 
-6. **Show Model Performance** — "Our ensemble model achieves AUC 0.91. Here's the precision-recall curve, and here's the per-anomaly-type breakdown."
+7. **Show ML Rigor** — "XGBoost achieves AUC 0.89 on synthetic data. But here's the important part: the ablation chart. Rules baseline catches the obvious violations. XGBoost adds 15% lift by detecting subtle upcoding patterns that rules miss. That's the ML value proposition."
 
-7. **The Abacus Connection** — "This runs on synthetic data today. But the schema mirrors Abacus's medallion architecture exactly. Swap the data source, point ChromaDB at Databricks Vector Search, and this is production-ready for Abacus's Payment Integrity solution."
+8. **Honest Framing** — "This runs on synthetic data. The schema follows Abacus's medallion architecture. The evidence systems are extensible — AMA CPT docs, LCD databases, and payer policies plug into the same interface. What you're seeing is the architecture and capability, ready for real data."
 
-### 12.2 Key Talking Points for Corporate Audience
+### 12.2 Key Talking Points
 
-- **$100B problem** — improper payments are massive; even small % improvements are worth millions
-- **Not replacing investigators — amplifying them** — AI does the tedious evidence gathering; humans make decisions
-- **Auditable and explainable** — every AI output cites its sources; SHAP shows why the model flagged a claim
-- **Production-architecture-ready** — medallion schema, containerized backend, model registry patterns
-- **Measurable ROI** — show efficiency metrics: time-to-investigate reduced from ~45 min to ~5 min (simulated benchmark)
+- **$100B problem** — improper payments are massive; AI-assisted investigation is a force multiplier
+- **Not replacing investigators — amplifying them** — AI does evidence gathering; humans decide
+- **Explainable and grounded** — SHAP explains the ML; citations ground the rationale; NCCI is deterministic
+- **Agentic orchestration** — different anomaly types get different investigation paths, not one-size-fits-all
+- **Production architecture patterns** — medallion schema, containerized backend, extensible evidence systems
+- **Honest about limitations** — synthetic data, narrow corpus, capability demo — which makes it MORE credible, not less
 
 ---
 
-## 13. Implementation Phases (3-4 Weeks)
+## 13. Implementation Phases (4 Weeks)
 
-### Week 1: Foundation
-- Set up project structure, Docker, CI
-- Generate synthetic data with Synthea + anomaly injection
-- Build feature engineering pipeline
-- Train and evaluate ML models (Isolation Forest + XGBoost + Autoencoder ensemble)
+### Week 1: Data & ML Foundation
+- Set up project structure, Docker
+- Generate synthetic Medicare Part B data with Synthea + 3 anomaly types
+- Build point-in-time feature engineering pipeline
+- Implement rules baseline
+- Train XGBoost + Isolation Forest, run ablation
 - Basic FastAPI skeleton with claims endpoints
 
-### Week 2: Intelligence Layer
-- Build RAG pipeline (document ingestion, chunking, embedding, ChromaDB)
-- Implement NCCI edit lookup
-- Build LangGraph agents (triage, evidence, rationale)
+### Week 2: Evidence Systems & Agents
+- Build NCCI rules engine with modifier logic
+- Build RAG pipeline (CMS manual ingestion, chunking, embedding, ChromaDB)
+- Build LangGraph sequential chain (triage -> evidence -> rationale)
 - Wire up investigation API endpoints
 - Begin frontend scaffolding (Next.js + dashboard layout)
 
 ### Week 3: Frontend & Integration
 - Complete dashboard, claims explorer, claim detail views
-- Build investigation view with SHAP visualization
-- Implement chat interface with SSE streaming
-- Build analytics page with model performance charts
+- Build investigation view with SHAP visualization + dual scores
+- Build agent step visualization (triage -> evidence -> rationale visible)
+- Implement embedded chat with SSE streaming
 - End-to-end integration testing
 
 ### Week 4: Polish & Presentation
-- UI polish, responsive design, loading states, error handling
-- Demo data curation (pick the most compelling examples)
-- Performance optimization (caching, lazy loading)
-- Write documentation and architecture overview
+- UI polish, loading states, error handling
+- Analytics page with ablation charts
+- Demo data curation (pick most compelling examples)
+- Write documentation
 - Prepare presentation deck and demo script
 - Rehearse live demo
+
+**Schedule risk:** Week 1 (data generation + ML) and Week 2 (agents + prompt iteration) are the highest-risk phases. If behind schedule, cut: embedded chat (Week 3), analytics page detail (Week 4). The core flow (dashboard -> claims -> investigate -> rationale) is non-negotiable.
 
 ---
 
@@ -835,21 +907,46 @@ The demo follows a Payment Integrity investigator's workflow:
 |---|---|---|
 | LLM API costs during development | Medium | Use GPT-4o-mini for iteration, GPT-4o/Claude for demo only |
 | Synthea data doesn't look realistic enough | Medium | Calibrate with CMS public statistics; curate demo subset |
-| Agent responses are inconsistent | High | Structured output parsing, few-shot prompts, temperature=0 for reproducibility |
-| RAG retrieves irrelevant chunks | High | Hybrid retrieval + reranking + golden set evaluation before demo |
-| Scope creep into pre-pay / real-time | Low | Hard scope boundary in this doc; post-pay investigation only |
-| 3-4 weeks is tight for this scope | Medium | Prioritize: ML + agents + core UI first; chat and analytics are stretch |
-| Frontend complexity slows progress | Medium | Lean on shadcn/ui heavily; avoid custom components where possible |
+| Agent responses are inconsistent | High | Strict JSON output schemas, few-shot prompts, temperature=0 |
+| RAG retrieves generic policy text | High | Narrow corpus to Part B-relevant chapters; validate with golden set |
+| ML doesn't beat rules baseline | Medium | This is an honest finding — report it transparently in ablation |
+| 4 weeks is tight for this scope | Medium | Non-negotiable core: ML + agents + investigation UI. Cut chat and analytics detail if behind |
+| Triage agent adds no real value | Medium | If it doesn't change evidence tool selection in practice, merge into deterministic routing |
+| IF novelty score is noise | Low | If not actionably different from XGBoost score, remove from UI |
 
 ---
 
-## 15. Future Extensibility (Talking Points, Not Implementation)
+## 15. Future Extensibility (Presentation Talking Points Only)
 
-These are discussion points for the presentation — things the platform *could* do if deployed at Abacus:
+These are discussion points — things the system could do if deployed at Abacus:
 
-- **Pre-pay integration:** Move anomaly detection upstream into the claims adjudication pipeline for real-time flagging
-- **Feedback loop:** Investigator accept/reject decisions retrain the ML models continuously
-- **Provider profiling:** Long-term provider risk scoring across the entire book of business
-- **Multi-payer patterns:** Cross-client anonymized pattern detection (network-level fraud rings)
-- **Regulatory update agent:** Automatically re-index policy docs when CMS publishes updates, flag impacted investigation rationales
-- **Databricks native:** Run the ML pipeline as Databricks jobs, use Unity Catalog for governance, Vector Search for RAG
+- **Expand policy corpus:** AMA CPT guidelines, LCD/NCD databases, payer-specific medical policies
+- **Expand claims universe:** Medicare Part A, Medicaid, commercial — each with appropriate policy assets
+- **Pre-pay integration:** Move detection upstream into claims adjudication
+- **Feedback loop:** Investigator decisions retrain XGBoost continuously
+- **Provider profiling:** Long-term provider risk scoring across the book of business
+- **Databricks native:** ML pipeline as Databricks jobs, Unity Catalog for governance, Vector Search for RAG
+
+---
+
+## Appendix: Changes from Original Spec (Post-Adversarial Review)
+
+| Area | Original | Revised | Reason |
+|---|---|---|---|
+| **Name** | Payment Integrity Claims Intelligence Platform | Claims Investigation Intelligence Assistant | Honest framing |
+| **Domain** | All payment integrity claims | Medicare Part B professional claims only | Narrow to what public corpus supports |
+| **Anomaly types** | 6 types | 3 types (upcoding, NCCI violations, duplicates) | Only types with verifiable policy backing |
+| **ML architecture** | 3-model ensemble (IF + XGBoost + Autoencoder) with meta-learner | XGBoost (primary, explainable) + IF (separate novelty score) | SHAP faithfulness; no explainability theater |
+| **Evaluation** | Random 70/15/15 split | Grouped temporal split + point-in-time features | Fix evaluation leakage |
+| **Removed features** | `member_historical_anomaly_rate`, `provider_denial_rate_historical`, `diagnosis_procedure_coherence_score` | Removed | Label leakage, unavailable data, noisy signal |
+| **Added** | — | Rules baseline + ablation | Prove ML adds value beyond deterministic checks |
+| **NCCI** | RAG-based lookup | Deterministic rules engine with modifier logic | Structured data needs structured lookup |
+| **RAG corpus** | CMS manuals + "CPT Coding Guidelines" (AMA) | CMS manuals (Part B chapters) + HCPCS + CMS FWA guidelines | Removed AMA-copyrighted material |
+| **RAG role** | Core evidence system | Explanatory text only (NCCI handles code-pair adjudication) | Right tool for right job |
+| **Agents** | 3 agents + separate chat agent, complex graph | 3 agents sequential chain, chat folded into rationale agent | Reduced complexity, same capability |
+| **Triage agent** | Classifies anomaly type | Classifies + routes to different evidence tools | Must prove non-redundant value |
+| **Agent guardrails** | "Must cite at least 2 sources" | "Cite all relevant sources found" | Avoid citation padding |
+| **Frontend pages** | 6 pages including /chat and /knowledge | 4 pages, chat embedded in claim detail | Scope reduction |
+| **Framing** | "audit-ready", "production-ready" | "investigation-support", "production-architecture patterns" | Honest about capabilities |
+| **Timeline** | 3-4 weeks | 4 weeks (3 is aggressive) | Realistic scheduling |
+| **Reranking** | Cross-encoder pre-committed | Only if basic retrieval fails during testing | Avoid premature optimization |
