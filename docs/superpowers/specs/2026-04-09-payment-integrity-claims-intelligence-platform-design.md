@@ -1,6 +1,6 @@
 # Claims Investigation Intelligence Assistant — Design Specification
 
-> **Revised after adversarial review with GPT-5.4.** Changes from the original spec are documented in the Appendix.
+> **Revised after adversarial review with GPT-5.4 and subsequent architectural critique.** Changes from the original spec are documented in the Appendix.
 
 ## 1. Problem Statement
 
@@ -47,7 +47,8 @@ The system is intentionally narrowed to **Medicare Part B professional claims** 
 | XGBoost lift over rules baseline | Measurable | Ablation proves ML adds value beyond deterministic checks |
 | RAG retrieval precision on policy evidence | > 80% | On golden eval set of Medicare Part B policy questions |
 | Agentic rationale coherence (manual eval on 50 samples) | > 85% rated "useful" | Human evaluation rubric |
-| End-to-end latency: claim -> flag -> rationale | < 30 seconds | Single claim investigation |
+| Time-to-first-result (triage output streamed) | < 5 seconds | User sees triage immediately while evidence/rationale continue |
+| End-to-end latency: claim -> full rationale | < 30 seconds | All 3 agent steps complete |
 | UI completeness | Fully interactive with core investigation flow | Dashboard -> claims -> investigate -> feedback |
 | Demo readiness | Live walkthrough-ready with compelling narrative | Honest about synthetic data and limitations |
 
@@ -74,6 +75,12 @@ Generate ~50K-100K synthetic patient records producing realistic Medicare Part B
 - Member eligibility and enrollment
 - Provider roster with specialties and NPI numbers
 
+**Synthetic claim_receipt_date generation:**
+Real healthcare claims have significant lag between service and submission. Synthea does not model this. We generate a synthetic `claim_receipt_date` per claim by adding a realistic lag to `service_date`:
+- Distribution: lognormal with median ~14 days, 90th percentile ~45 days (calibrated to CMS claims lag statistics)
+- This is the temporal anchor for all point-in-time feature aggregations — NOT `service_date`
+- Rationale: in production pipelines, features available at decision time depend on when claims arrive, not when services occurred. Using `service_date` would create temporal leakage by treating future-submitted claims as known.
+
 **Supplementary: CMS Public Use Files**
 Medicare provider utilization and payment data from CMS.gov to calibrate realistic charge distributions, procedure frequencies, and provider billing patterns for Part B professional services.
 
@@ -88,6 +95,18 @@ Narrowed to **3 anomaly types** that the public policy corpus (CMS manuals + NCC
 | **Duplicate Billing** | Same service billed multiple times with slight date/modifier variations | Clone claims with +-1 day offset and minor modifier changes | ~1.5% |CMS Claims Processing Manual duplicate billing rules |
 
 Total anomaly rate: ~5.5%. Each injected anomaly gets a label record: `(claim_id, anomaly_type, injection_params)`.
+
+**Injection Distribution Partitioning (Train vs. Test):**
+
+To prevent XGBoost from simply memorizing the injection function, anomaly injection uses **different parameter distributions** for train and test data:
+
+| Anomaly Type | Train Distribution | Test Distribution (Holdout) |
+|---|---|---|
+| Upcoding | Shift by exactly 1 CPT level within category | Shift by 2 levels, or cross-category shifts |
+| NCCI Violations | Top 50 most common conflicting code pairs | Next 50 code pairs (different but structurally similar) |
+| Duplicate Billing | Clone with +-1 day offset | Clone with +-2-3 day offset and different modifier patterns |
+
+This means the ablation metric (XGBoost lift over rules baseline) measures **generalization to unseen anomaly variants**, not memorization of injection logic. If XGBoost can detect upcoding-by-2-levels after training on upcoding-by-1-level, it learned the structural pattern. If it can't, that's an honest finding.
 
 **Why only 3 types:** GPT-5.4's adversarial review correctly identified that anomaly types must be supportable by the policy corpus. These 3 have direct, verifiable policy backing in public CMS material. "Phantom services" and "provider outliers" from the original spec lacked sufficient policy grounding for evidence-based investigation rationales.
 
@@ -128,6 +147,7 @@ data/
 │
 ├── processed/                    # Feature-engineered (Silver/Gold equivalent)
 │   ├── medical_claims.parquet    # claim_id, member_id, provider_id, service_date,
+│   │                             # claim_receipt_date (synthetic lag from service_date),
 │   │                             # procedure_codes, diagnosis_codes, modifiers,
 │   │                             # charge_amount, allowed_amount, paid_amount,
 │   │                             # place_of_service
@@ -225,7 +245,7 @@ These are **architecture patterns**, not production-ready integrations:
 
 ### 4.1 Feature Engineering
 
-All features are computed **point-in-time** using strict lookback windows. For each claim, only data available before that claim's service date is used for aggregate features. This prevents temporal leakage.
+All features are computed **point-in-time** using strict lookback windows anchored to `claim_receipt_date` (not `service_date`). For each claim, aggregate features only use claims whose `claim_receipt_date` is strictly before the current claim's `claim_receipt_date`. This mirrors production reality: at decision time, you only know about claims that have already arrived in the system, regardless of when the service occurred.
 
 **Claim-Level Features (per claim):**
 - `charge_amount`, `allowed_amount`, `paid_amount`, `charge_to_allowed_ratio`
@@ -236,15 +256,17 @@ All features are computed **point-in-time** using strict lookback windows. For e
 - `has_ncci_conflict` (binary: does this claim contain a code pair flagged by NCCI without valid modifier?)
 - `modifier_count`, `modifier_59_present` (modifier usage patterns)
 
-**Provider-Level Features (point-in-time aggregated, joined to claims):**
+**Provider-Level Features (point-in-time aggregated by claim_receipt_date, joined to claims):**
 - `provider_avg_charge_30d`, `provider_claim_volume_30d`, `provider_specialty_charge_percentile`
 - `provider_unique_patients_30d`
 - `provider_procedure_concentration` (HHI of procedure code distribution)
 - `provider_peer_deviation` (z-score vs. same-specialty peers in lookback window)
+- All 30d/90d windows are based on `claim_receipt_date`, not `service_date`
 
-**Member-Level Features (point-in-time aggregated, joined to claims):**
+**Member-Level Features (point-in-time aggregated by claim_receipt_date, joined to claims):**
 - `member_claim_frequency_90d`, `member_unique_providers_90d`
 - `member_avg_charge_90d`, `member_chronic_condition_count`
+- All windows based on `claim_receipt_date`
 
 **Removed features** (from original spec):
 - ~~`member_historical_anomaly_rate`~~ — label leakage in synthetic data
@@ -281,7 +303,14 @@ All features are computed **point-in-time** using strict lookback windows. For e
 - **XGBoost** detects known anomaly patterns from the labeled data. SHAP `TreeExplainer` provides faithful, exact feature attributions for every prediction. This is the primary score shown to investigators.
 - **Isolation Forest** detects statistical outliers regardless of labels. Reported as a separate "novelty score" — a complementary signal, not blended into the XGBoost score. If it adds no actionable value during testing, it gets cut from the UI.
 
-**No autoencoder, no meta-learner.** The original ensemble was criticized for making SHAP explanations unfaithful. This dual-signal approach is cleaner: one score is fully explainable (XGBoost+SHAP), the other is a separate unsupervised signal.
+**Isolation Forest feature scoping:**
+Unsupervised anomaly detection on raw claims features will predominantly flag expensive or rare procedures — legitimate but unusual claims, not improper billing. To make IF actually useful:
+- **Exclude** from IF inputs: `charge_amount`, `allowed_amount`, `paid_amount`, `procedure_complexity_score`, and any pure dollar/rarity features
+- **Include** in IF inputs: behavioral and relational features only — `charge_to_allowed_ratio`, `provider_peer_deviation`, `provider_procedure_concentration`, `num_modifiers`, `modifier_count`, `days_between_service_and_submission`
+- This forces IF to detect outliers in **billing behavior patterns**, not just expensive claims
+- **UI suppression rule:** If IF flags a claim but XGBoost does not AND no rules are violated, suppress it from the primary investigation queue. Show it only in a secondary "unusual patterns" view to avoid alert fatigue.
+
+**No autoencoder, no meta-learner.** The original ensemble was criticized for making SHAP explanations unfaithful. This dual-signal approach is cleaner: one score is fully explainable (XGBoost+SHAP), the other is a scoped unsupervised behavioral signal.
 
 ### 4.3 Rules Baseline & Ablation
 
@@ -316,12 +345,13 @@ The SHAP explanation covers **only the XGBoost score**, not the IF novelty score
 ### 4.5 Model Training & Evaluation
 
 **Grouped temporal split:**
-1. Sort all claims by service_date
-2. Split temporally: first 70% of dates → train, next 15% → validation, last 15% → test
+1. Sort all claims by `claim_receipt_date` (the production-realistic temporal anchor)
+2. Split temporally: first 70% of receipt dates → train, next 15% → validation, last 15% → test
 3. Within each split, ensure no provider_id appears in both train and test (grouped split)
 4. This prevents both temporal leakage and provider-level information leakage
+5. **Injection distribution partitioning**: train set uses train-distribution anomaly parameters; test set uses holdout-distribution parameters (see §2.2)
 
-**Point-in-time feature construction:** All aggregate features (provider stats, member stats) are computed using only claims from before the target claim's service date. No future information leaks into features.
+**Point-in-time feature construction:** All aggregate features (provider stats, member stats) are computed using only claims whose `claim_receipt_date` is strictly before the target claim's `claim_receipt_date`. No future information leaks into features — this mirrors the real-world constraint where only previously received claims are available at decision time.
 
 **Evaluation metrics:**
 - AUC-ROC (primary — target > 0.85 on synthetic data)
@@ -423,7 +453,7 @@ The architecture is **extensible** — these sources plug into the same retrieva
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Simple sequential chain. No complex branching or looping. State flows forward through 3 nodes.
+Sequential chain with **one conditional edge**: if the Evidence Agent returns an empty or insufficient payload, the flow halts with a "Manual Review Required: Insufficient Evidence" state instead of forcing the Rationale Agent to hallucinate over empty context. This is the only branching — everything else flows forward through 3 nodes.
 
 ### 6.2 Agent Specifications
 
@@ -469,8 +499,12 @@ Simple sequential chain. No complex branching or looping. State flows forward th
          ▼
 3. Evidence Agent gathers evidence using triage-specified tools
          │
+         ├── If evidence payload is empty or insufficient:
+         │   → Halt with "Manual Review Required: Insufficient Evidence"
+         │   → Do NOT invoke Rationale Agent on empty context
+         │
          ▼
-4. Rationale Agent generates investigation-support narrative
+4. Rationale Agent generates investigation-support narrative (only with evidence)
          │
          ▼
 5. Result stored with full evidence chain + all agent outputs visible in UI
@@ -502,8 +536,14 @@ The system is an **investigation assistant**, not an autonomous decision-maker:
 # Claims & Investigation
 GET    /api/claims                          # List claims with filters (status, risk, date, provider)
 GET    /api/claims/{claim_id}               # Claim details + features + scores
-POST   /api/claims/{claim_id}/investigate   # Trigger agentic investigation
-GET    /api/claims/{claim_id}/investigation # Get investigation results
+POST   /api/claims/{claim_id}/investigate   # Trigger agentic investigation (SSE stream)
+       response: SSE stream of intermediate agent states:
+         event: triage    → {anomaly_type, confidence, priority, evidence_tools}
+         event: evidence  → {policy_citations[], ncci_findings[], context}
+         event: rationale → {rationale_text, citations[], recommended_action}
+         event: complete  → full investigation result
+         event: halt      → {reason: "insufficient_evidence", manual_review: true}
+GET    /api/claims/{claim_id}/investigation # Get stored investigation results
 PATCH  /api/claims/{claim_id}/investigation # Investigator feedback (accept/reject/modify)
 
 # Embedded Chat (claim-scoped)
@@ -611,11 +651,12 @@ The core workflow screen. When an investigator clicks into a claim:
 
 **Center panel — AI Investigation:**
 - Dual score display: XGBoost risk score (0-100) with SHAP waterfall + IF novelty score (separate gauge)
-- Triage classification with confidence and evidence tools used
-- AI-generated rationale (markdown with inline citations)
-- Linked policy evidence (expandable cards with source snippets)
-- NCCI edit findings (if applicable — structured, not AI-generated)
-- Each agent step visible (triage → evidence → rationale)
+- **Progressive rendering of agent steps** (SSE-driven, not wait-for-completion):
+  1. Triage result appears first (~3-5s) — anomaly type, confidence, evidence tools selected
+  2. Evidence cards populate as retrieved (~5-15s) — policy citations, NCCI findings, provider context
+  3. Rationale synthesized last (~15-25s) — full narrative with inline citations
+  4. If evidence is insufficient → "Manual Review Required" state (no hallucinated rationale)
+- This occupies the investigator's attention during the heaviest LLM work and makes the agentic pipeline visible and impressive in demos
 
 **Right panel — Actions & Chat:**
 - Accept / Reject / Modify buttons
@@ -842,7 +883,7 @@ payment-integrity-ai/
 
 2. **Explore Flagged Claims** — "Sort by risk score. This claim stands out — XGBoost risk 94, suspected upcoding."
 
-3. **Trigger Investigation** — "One click. Watch the agentic pipeline: triage classifies it as upcoding and routes to billing policy search + provider history... evidence agent gathers CMS manual citations... rationale agent synthesizes... done in 12 seconds."
+3. **Trigger Investigation** — "One click. Watch the agentic pipeline stream in real-time: triage appears in 3 seconds — it's upcoding, routing to billing policy search + provider history. Evidence cards populate one by one... now the rationale synthesizes... done in 18 seconds, and the investigator was engaged the whole time."
 
 4. **Review AI Rationale** — "The system cites CMS Claims Processing Manual Chapter 12 and found 7 similar claims from this provider. Every statement has a source link."
 
@@ -850,7 +891,7 @@ payment-integrity-ai/
 
 6. **Ask Follow-Up** — "In the embedded chat: 'Are these two codes allowed on the same date?' The system checks NCCI edits directly — structured lookup, not AI guesswork — and responds with the specific edit rule."
 
-7. **Show ML Rigor** — "XGBoost achieves AUC 0.89 on synthetic data. But here's the important part: the ablation chart. Rules baseline catches the obvious violations. XGBoost adds 15% lift by detecting subtle upcoding patterns that rules miss. That's the ML value proposition."
+7. **Show ML Rigor** — "XGBoost achieves AUC 0.89 on synthetic data — but here's what makes this credible: the model was trained on one anomaly distribution and tested on a different one. It generalized. And the ablation chart shows: rules baseline catches the obvious violations, but XGBoost adds measurable lift by detecting subtle patterns rules miss. That's not memorization — that's learned structure."
 
 8. **Honest Framing** — "This runs on synthetic data. The schema follows Abacus's medallion architecture. The evidence systems are extensible — AMA CPT docs, LCD databases, and payer policies plug into the same interface. What you're seeing is the architecture and capability, ready for real data."
 
@@ -950,3 +991,13 @@ These are discussion points — things the system could do if deployed at Abacus
 | **Framing** | "audit-ready", "production-ready" | "investigation-support", "production-architecture patterns" | Honest about capabilities |
 | **Timeline** | 3-4 weeks | 4 weeks (3 is aggressive) | Realistic scheduling |
 | **Reranking** | Cross-encoder pre-committed | Only if basic retrieval fails during testing | Avoid premature optimization |
+
+### Changes from Architectural Critique (Round 2)
+
+| Area | Issue | Fix |
+|---|---|---|
+| **Injection distribution** | XGBoost would memorize injection function; ablation lift is circular | Train/test use different anomaly parameter distributions (§2.2) |
+| **Temporal anchor** | `service_date` ignores claims lag; creates temporal leakage | Generate synthetic `claim_receipt_date`; all point-in-time features anchored to it (§2.1, §4.1) |
+| **Empty evidence handling** | Sequential chain with no failure condition forces hallucination | Conditional edge: empty evidence → halt with "Manual Review Required" (§6.1, §6.3) |
+| **Latency / streaming** | 3 sequential LLM calls likely exceed 30s; user stares at spinner | SSE streaming of intermediate agent states; progressive UI rendering (§7.1, §8.3) |
+| **IF feature scoping** | IF on raw features just flags expensive/rare procedures | Exclude dollar/rarity features from IF inputs; suppress IF-only flags from primary queue (§4.2) |
