@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__markitdown__convert_to_markdown",
+      "mcp__firecrawl__firecrawl_search"
+    ]
+  }
+}
