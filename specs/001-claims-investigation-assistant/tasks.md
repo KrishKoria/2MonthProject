@@ -43,10 +43,10 @@
 
 ### Synthetic Data Generation
 
-- [ ] T009 [P] Implement Synthea claims generation script (50K–100K records, lognormal lag) in `backend/data_generation/generate_synthea.py`
-- [ ] T010 [P] Implement lognormal receipt date generator (`claim_receipt_date` from `service_date`) in `backend/data_generation/generate_receipt_dates.py`
-- [ ] T011 Implement anomaly injection script supporting `--split train|test` with partitioned distributions (upcoding: shift CPT level; NCCI: top-50 vs next-50 pairs; duplicate: ±1d vs ±2-3d offset) in `backend/data_generation/inject_anomalies.py`
-- [ ] T012 [P] Create data validation script verifying anomaly distribution and Parquet schema in `backend/data_generation/validate.py`
+- [x] T009 [P] Implement Synthea claims generation script (50K–100K records, lognormal lag) in `backend/data_generation/generate_synthea.py`
+- [x] T010 [P] Implement lognormal receipt date generator (`claim_receipt_date` from `service_date`) in `backend/data_generation/generate_receipt_dates.py`
+- [x] T011 Implement anomaly injection script supporting `--split train|test` with partitioned distributions (upcoding: shift CPT level; NCCI: top-50 vs next-50 pairs; duplicate: ±1d vs ±2-3d offset) in `backend/data_generation/inject_anomalies.py`
+- [x] T012 [P] Create data validation script verifying anomaly distribution and Parquet schema in `backend/data_generation/validate.py`
 
 ### ML Pipeline (Feature Engineering + Model Training + Scoring)
 
