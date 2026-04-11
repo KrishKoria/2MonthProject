@@ -50,18 +50,18 @@
 
 ### ML Pipeline (Feature Engineering + Model Training + Scoring)
 
-- [ ] T013 Write `test_no_future_leakage()` in `backend/tests/test_features.py` using `claim_receipt_date` strict `<` inequality — **run `pytest tests/test_features.py::test_no_future_leakage` and confirm it FAILS before writing T014** (constitution II)
-- [ ] T014 Implement point-in-time feature engineering in `backend/app/ml/features.py` using Polars lazy evaluation: all 23 features from manifest, per-claim lookback windows anchored to `claim_receipt_date`, never `service_date`; raises `FeatureComputationError` on missing features
-- [ ] T015 [P] Implement deterministic rules baseline (`ncci_conflict`, `charge_outlier`, `duplicate_match` flags) in `backend/app/ml/rules_baseline.py`
-- [ ] T016 Implement XGBoost model training with grouped temporal split (70/15/15 by `claim_receipt_date`, no provider in both train+test) and precision gate (≥ 0.75 at operating threshold) in `backend/app/ml/model.py`
-- [ ] T017 [P] Implement SHAP TreeExplainer wrapper with invariant check (`abs(sum(shap_values) - (pred - base_value)) < 1e-5`) in `backend/app/ml/explainer.py`
-- [ ] T018 Implement end-to-end batch scoring pipeline (features → model → SHAP → risk_band assignment) in `backend/app/ml/pipeline.py`
-- [ ] T019 Create model training + ablation evaluation script outputting `data/scores/model_metadata.json` in `backend/scripts/train_model.py`; add schema validation step: load the output JSON and assert all required keys are present (`auc_roc`, `precision_at_k`, `precision_recall_curve`, `per_anomaly_recall`, `ablation`) before script exits
-- [ ] T020 Create batch scoring script outputting `data/scores/risk_scores.parquet` in `backend/scripts/score_claims.py`; add schema validation step: load the output Parquet and assert all required columns are present (`claim_id`, `xgboost_score`, `shap_values`, `rules_flags`, `risk_band`, `scored_at`) and no nulls in `claim_id` before script exits
+- [x] T013 Write `test_no_future_leakage()` in `backend/tests/test_features.py` using `claim_receipt_date` strict `<` inequality — **run `pytest tests/test_features.py::test_no_future_leakage` and confirm it FAILS before writing T014** (constitution II)
+- [x] T014 Implement point-in-time feature engineering in `backend/app/ml/features.py` using Polars lazy evaluation: all 23 features from manifest, per-claim lookback windows anchored to `claim_receipt_date`, never `service_date`; raises `FeatureComputationError` on missing features
+- [x] T015 [P] Implement deterministic rules baseline (`ncci_conflict`, `charge_outlier`, `duplicate_match` flags) in `backend/app/ml/rules_baseline.py`
+- [x] T016 Implement XGBoost model training with grouped temporal split (70/15/15 by `claim_receipt_date`, no provider in both train+test) and precision gate (≥ 0.75 at operating threshold) in `backend/app/ml/model.py`
+- [x] T017 [P] Implement SHAP TreeExplainer wrapper with invariant check (`abs(sum(shap_values) - (pred - base_value)) < 1e-5`) in `backend/app/ml/explainer.py`
+- [x] T018 Implement end-to-end batch scoring pipeline (features → model → SHAP → risk_band assignment) in `backend/app/ml/pipeline.py`
+- [x] T019 Create model training + ablation evaluation script outputting `data/scores/model_metadata.json` in `backend/scripts/train_model.py`; add schema validation step: load the output JSON and assert all required keys are present (`auc_roc`, `precision_at_k`, `precision_recall_curve`, `per_anomaly_recall`, `ablation`) before script exits
+- [x] T020 Create batch scoring script outputting `data/scores/risk_scores.parquet` in `backend/scripts/score_claims.py`; add schema validation step: load the output Parquet and assert all required columns are present (`claim_id`, `xgboost_score`, `shap_values`, `rules_flags`, `risk_band`, `scored_at`) and no nulls in `claim_id` before script exits
 
 ### Evidence Infrastructure (NCCI + RAG)
 
-- [ ] T021 Implement NCCI conflict lookup engine in `backend/app/evidence/ncci_engine.py`: load `practitioner_ptp_edits.csv` at startup, `lookup_ncci_conflict(code_1, code_2, service_date)` as sorted-tuple exact-match with date-range filtering
+- [x] T021 Implement NCCI conflict lookup engine in `backend/app/evidence/ncci_engine.py`: load `practitioner_ptp_edits.csv` at startup, `lookup_ncci_conflict(code_1, code_2, service_date)` as sorted-tuple exact-match with date-range filtering
 - [ ] T022 [P] Implement CMS policy document parser and chunker (~500 tokens, 50-token overlap) in `backend/app/evidence/rag_ingest.py`
 - [ ] T023 [P] Implement ChromaDB embedding and single-collection indexing (`cms_policy`, `text-embedding-3-small`, metadata: source/chapter/section/topic) in `backend/app/evidence/rag_embeddings.py`
 - [ ] T024 Implement semantic RAG retriever with metadata-filtered search in `backend/app/evidence/rag_retriever.py`

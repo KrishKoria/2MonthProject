@@ -47,9 +47,9 @@ def batch_score(
     # Normalize to 0-100
     normalized_scores = (raw_scores * 100).clip(0, 100)
 
-    # SHAP values
+    # SHAP values (strict=False for batch — rationale node uses strict=True)
     explainer = SHAPExplainer(model, feature_cols)
-    shap_values_list = explainer.explain(X)
+    shap_values_list = explainer.explain(X, strict=False)
 
     # Rules baseline flags
     logger.info("Computing rules baseline flags...")

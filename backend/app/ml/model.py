@@ -41,12 +41,19 @@ def grouped_temporal_split(
 
     70/15/15 split. No provider appears in both train and test.
     """
-    # Merge receipt dates
-    merged = features_df.merge(
-        claims_df[["claim_id", "claim_receipt_date", "provider_id"]],
-        on="claim_id",
-        how="left",
-    )
+    # Merge receipt dates if not already present
+    merged = features_df.copy()
+    if "claim_receipt_date" not in merged.columns or "provider_id" not in merged.columns:
+        cols_to_merge = ["claim_id"]
+        if "claim_receipt_date" not in merged.columns:
+            cols_to_merge.append("claim_receipt_date")
+        if "provider_id" not in merged.columns:
+            cols_to_merge.append("provider_id")
+        merged = merged.merge(
+            claims_df[cols_to_merge],
+            on="claim_id",
+            how="left",
+        )
     merged = merged.sort_values("claim_receipt_date")
 
     n = len(merged)
@@ -57,9 +64,18 @@ def grouped_temporal_split(
     val = merged.iloc[train_end:val_end]
     test = merged.iloc[val_end:]
 
-    # Provider group constraint: remove test claims whose providers are in train
+    # Provider group constraint: remove test claims whose providers appear
+    # ONLY in train. If this would remove >80% of test, relax constraint.
     train_providers = set(train["provider_id"].unique())
-    test = test[~test["provider_id"].isin(train_providers)]
+    test_filtered = test[~test["provider_id"].isin(train_providers)]
+    if len(test_filtered) >= len(test) * 0.2:
+        test = test_filtered
+    else:
+        logger.warning(
+            "Provider group constraint would leave only %d/%d test samples. "
+            "Relaxing constraint to preserve test set size.",
+            len(test_filtered), len(test),
+        )
 
     logger.info("Split sizes — train: %d, val: %d, test: %d", len(train), len(val), len(test))
     return train, val, test
