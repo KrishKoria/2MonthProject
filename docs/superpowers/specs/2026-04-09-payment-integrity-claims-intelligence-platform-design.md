@@ -54,15 +54,15 @@ Intentionally narrowed to **Medicare Part B professional claims** — the cleane
 
 ### 1.4 Success Metrics
 
-| Metric | Target | Notes |
-|---|---|---|
-| XGBoost AUC-ROC on synthetic data | > 0.85 | Grouped temporal split; framed as capability demo |
-| XGBoost lift over rules baseline | Measurable | Ablation proves ML adds value beyond deterministic checks |
-| RAG retrieval precision on policy evidence | > 80% | On golden eval set of Medicare Part B policy questions |
-| Agentic rationale coherence (manual eval on 50 samples) | > 85% rated "useful" | Human evaluation rubric |
-| End-to-end latency: click investigate → full rationale | < 15 seconds | Deterministic steps <2s, LLM synthesis streamed |
-| UI completeness | Fully interactive with core investigation flow | Dashboard → claims → investigate → feedback |
-| Demo readiness | Live walkthrough-ready with compelling narrative | Honest about synthetic data and limitations |
+| Metric                                                  | Target                                           | Notes                                                     |
+| ------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
+| XGBoost AUC-ROC on synthetic data                       | > 0.85                                           | Grouped temporal split; framed as capability demo         |
+| XGBoost lift over rules baseline                        | Measurable                                       | Ablation proves ML adds value beyond deterministic checks |
+| RAG retrieval precision on policy evidence              | > 80%                                            | On golden eval set of Medicare Part B policy questions    |
+| Agentic rationale coherence (manual eval on 50 samples) | > 85% rated "useful"                             | Human evaluation rubric                                   |
+| End-to-end latency: click investigate → full rationale  | < 15 seconds                                     | Deterministic steps <2s, LLM synthesis streamed           |
+| UI completeness                                         | Fully interactive with core investigation flow   | Dashboard → claims → investigate → feedback               |
+| Demo readiness                                          | Live walkthrough-ready with compelling narrative | Honest about synthetic data and limitations               |
 
 ### 1.5 Honest Framing & Limitations
 
@@ -79,16 +79,16 @@ What IS demonstrated: production-architecture patterns, end-to-end ML + GenAI pi
 
 Every component earns its place through a clear, non-redundant role:
 
-| Component | Why it exists | Why this implementation |
-|---|---|---|
-| **Rules baseline** | Proves ML adds value beyond obvious checks | Deterministic — no model needed for known violations |
-| **XGBoost** | Detects subtle pattern combinations rules miss | Best supervised model for tabular data; SHAP TreeExplainer gives exact explanations |
-| **SHAP** | Makes ML trustworthy to investigators | TreeExplainer is mathematically faithful for tree models — not an approximation |
-| **NCCI rules engine** | Code-pair adjudication needs structured logic | Deterministic lookup — RAG would be wrong tool for structured data |
-| **RAG** | Investigation rationales need policy citations | Explanatory text retrieval — right tool for unstructured policy documents |
-| **LangGraph orchestrator** | Multi-step investigation needs typed state and observability | Deterministic nodes where possible, LLM only for synthesis |
-| **SSE streaming** | Investigation takes seconds; user needs progressive feedback | Trivial with one LLM call; shows async patterns |
-| **Parquet + medallion** | Abacus runs on Databricks lakehouse | Same schema patterns, directly portable |
+| Component                  | Why it exists                                                | Why this implementation                                                             |
+| -------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| **Rules baseline**         | Proves ML adds value beyond obvious checks                   | Deterministic — no model needed for known violations                                |
+| **XGBoost**                | Detects subtle pattern combinations rules miss               | Best supervised model for tabular data; SHAP TreeExplainer gives exact explanations |
+| **SHAP**                   | Makes ML trustworthy to investigators                        | TreeExplainer is mathematically faithful for tree models — not an approximation     |
+| **NCCI rules engine**      | Code-pair adjudication needs structured logic                | Deterministic lookup — RAG would be wrong tool for structured data                  |
+| **RAG**                    | Investigation rationales need policy citations               | Explanatory text retrieval — right tool for unstructured policy documents           |
+| **LangGraph orchestrator** | Multi-step investigation needs typed state and observability | Deterministic nodes where possible, LLM only for synthesis                          |
+| **SSE streaming**          | Investigation takes seconds; user needs progressive feedback | Trivial with one LLM call; shows async patterns                                     |
+| **Parquet + medallion**    | Abacus runs on Databricks lakehouse                          | Same schema patterns, directly portable                                             |
 
 ---
 
@@ -117,11 +117,11 @@ Medicare provider utilization and payment data from CMS.gov to calibrate realist
 
 Narrowed to **3 anomaly types** that the public policy corpus can actually support with decision-relevant evidence:
 
-| Pattern | Description | Injection Method | Rate | Policy Basis |
-|---|---|---|---|---|
-| **Upcoding** | Procedure codes shifted to higher-paying variants within same family | Replace CPT codes with higher-level codes in same category | ~2% | CMS Claims Processing Manual billing rules |
-| **NCCI Code-Pair Violations** | Procedures billed together that violate NCCI edit rules | Pair conflicting procedure codes per NCCI practitioner PTP edits | ~2% | NCCI PTP edits (structured rules) |
-| **Duplicate Billing** | Same service billed multiple times with slight date variations | Clone claims with +-1 day offset and minor modifier changes | ~1.5% | CMS Claims Processing Manual duplicate billing rules |
+| Pattern                       | Description                                                          | Injection Method                                                 | Rate  | Policy Basis                                         |
+| ----------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------- | ----- | ---------------------------------------------------- |
+| **Upcoding**                  | Procedure codes shifted to higher-paying variants within same family | Replace CPT codes with higher-level codes in same category       | ~2%   | CMS Claims Processing Manual billing rules           |
+| **NCCI Code-Pair Violations** | Procedures billed together that violate NCCI edit rules              | Pair conflicting procedure codes per NCCI practitioner PTP edits | ~2%   | NCCI PTP edits (structured rules)                    |
+| **Duplicate Billing**         | Same service billed multiple times with slight date variations       | Clone claims with +-1 day offset and minor modifier changes      | ~1.5% | CMS Claims Processing Manual duplicate billing rules |
 
 Total anomaly rate: ~5.5%. Each injected anomaly gets a label record: `(claim_id, anomaly_type, injection_params)`.
 
@@ -129,11 +129,11 @@ Total anomaly rate: ~5.5%. Each injected anomaly gets a label record: `(claim_id
 
 To prevent XGBoost from memorizing the injection function, anomaly injection uses **different parameter distributions** for train and test data:
 
-| Anomaly Type | Train Distribution | Test Distribution (Holdout) |
-|---|---|---|
-| Upcoding | Shift by exactly 1 CPT level within category | Shift by 2 levels, or cross-category shifts |
-| NCCI Violations | Top 50 most common conflicting code pairs | Next 50 code pairs (different but structurally similar) |
-| Duplicate Billing | Clone with +-1 day offset | Clone with +-2-3 day offset and different modifier patterns |
+| Anomaly Type      | Train Distribution                           | Test Distribution (Holdout)                                 |
+| ----------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| Upcoding          | Shift by exactly 1 CPT level within category | Shift by 2 levels, or cross-category shifts                 |
+| NCCI Violations   | Top 50 most common conflicting code pairs    | Next 50 code pairs (different but structurally similar)     |
+| Duplicate Billing | Clone with +-1 day offset                    | Clone with +-2-3 day offset and different modifier patterns |
 
 This means the ablation metric measures **generalization to unseen anomaly variants**, not memorization of injection logic.
 
@@ -145,19 +145,19 @@ This means the ablation metric measures **generalization to unseen anomaly varia
 
 **A. NCCI Rules Engine (Structured Lookup, NOT RAG):**
 
-| Asset | Content | Format | Update Cadence |
-|---|---|---|---|
+| Asset                       | Content                                            | Format                                                                     | Update Cadence      |
+| --------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------- | ------------------- |
 | NCCI Practitioner PTP Edits | Code-pair conflicts, mutually exclusive procedures | CSV with code_1, code_2, effective_date, deletion_date, modifier_indicator | Quarterly (CMS.gov) |
 
 For v1, this is a **simplified conflict-exists check**: given two procedure codes and a service date, does an active NCCI edit exist? The full modifier-bypass logic (modifier_indicator=0/1/9, -59/-XE/-XS/-XP/-XU checking) is explicitly scoped for v2. The v1 lookup returns: `{conflict_exists: bool, edit_type, effective_date}`. The presentation acknowledges this simplification and shows where modifier logic plugs in.
 
 **B. RAG Corpus (Explanatory Policy Text):**
 
-| Source | Content | Availability | Scope |
-|---|---|---|---|
+| Source                                | Content                                                                            | Availability     | Scope                           |
+| ------------------------------------- | ---------------------------------------------------------------------------------- | ---------------- | ------------------------------- |
 | CMS Medicare Claims Processing Manual | Selected chapters relevant to Part B professional billing (Ch. 12, Ch. 23, Ch. 26) | Public (cms.gov) | Narrowed to Part B professional |
-| HCPCS Code Descriptions | Procedure code descriptions and categories | Public (cms.gov) | Full HCPCS Level II |
-| CMS Fraud, Waste & Abuse Guidelines | Definitions, examples, investigation procedures | Public (cms.gov) | General |
+| HCPCS Code Descriptions               | Procedure code descriptions and categories                                         | Public (cms.gov) | Full HCPCS Level II             |
+| CMS Fraud, Waste & Abuse Guidelines   | Definitions, examples, investigation procedures                                    | Public (cms.gov) | General                         |
 
 RAG is used **only for explanatory text** — helping the rationale synthesis cite specific policy language. It does NOT adjudicate code-pair validity (that's the NCCI rules engine).
 
@@ -246,19 +246,19 @@ data/
 
 ### 3.2 Technology Stack
 
-| Layer | Technology | Rationale |
-|---|---|---|
-| **Frontend** | Next.js 14 + Tailwind CSS + shadcn/ui | Modern, fast, great component library |
-| **API** | FastAPI (Python) | Async, fast, auto-docs, ML-ecosystem native |
-| **ML Pipeline** | scikit-learn, XGBoost, SHAP | Industry-standard, explainable, fast iteration |
-| **NCCI Rules Engine** | Pandas/custom Python | Structured lookups — no model needed |
-| **RAG System** | ChromaDB + LangChain | Lightweight vector store, no infra overhead |
-| **Embeddings** | OpenAI `text-embedding-3-small` | Cost-effective, high quality |
-| **LLM** | OpenAI GPT-4o or Anthropic Claude Sonnet | Best balance of quality/speed/cost for rationale synthesis |
-| **Orchestrator** | LangGraph | Typed state, observable nodes, conditional edges |
-| **Data Processing** | Pandas + Polars | Fast local processing; Spark-compatible patterns |
-| **Storage** | Parquet files (in-memory at runtime) + ChromaDB | Zero-infra, portable, Abacus-compatible format |
-| **Data Generation** | Synthea + custom Python injectors | Synthetic healthcare data |
+| Layer                 | Technology                                      | Rationale                                                  |
+| --------------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| **Frontend**          | Next.js + Tailwind CSS + base ui                | Modern, fast, great component library                      |
+| **API**               | FastAPI (Python)                                | Async, fast, auto-docs, ML-ecosystem native                |
+| **ML Pipeline**       | scikit-learn, XGBoost, SHAP                     | Industry-standard, explainable, fast iteration             |
+| **NCCI Rules Engine** | Pandas/custom Python                            | Structured lookups — no model needed                       |
+| **RAG System**        | ChromaDB + LangChain                            | Lightweight vector store, no infra overhead                |
+| **Embeddings**        | OpenAI `text-embedding-3-small`                 | Cost-effective, high quality                               |
+| **LLM**               | OpenAI GPT-4o or Anthropic Claude Sonnet        | Best balance of quality/speed/cost for rationale synthesis |
+| **Orchestrator**      | LangGraph                                       | Typed state, observable nodes, conditional edges           |
+| **Data Processing**   | Pandas + Polars                                 | Fast local processing; Spark-compatible patterns           |
+| **Storage**           | Parquet files (in-memory at runtime) + ChromaDB | Zero-infra, portable, Abacus-compatible format             |
+| **Data Generation**   | Synthea + custom Python injectors               | Synthetic healthcare data                                  |
 
 ### 3.3 Abacus-Compatible Patterns
 
@@ -307,6 +307,7 @@ All features computed **point-in-time** using strict lookback windows anchored t
 Point-in-time correctness is architecturally correct in the spec but easy to implement incorrectly. The danger: leakage bugs don't crash the pipeline — they silently inflate model metrics. AUC might read 0.93 instead of 0.85 and you would have no indication that features are contaminated.
 
 **Bug A — Off-by-one in the temporal filter (use `<`, not `<=`):**
+
 ```python
 # Wrong — current claim included in its own aggregate window:
 provider_claims = all_claims[all_claims['claim_receipt_date'] <= target_date]
@@ -316,6 +317,7 @@ provider_claims = all_claims[all_claims['claim_receipt_date'] < target_date]
 ```
 
 **Bug B — Compute-then-join (the most common mistake, looks natural in Pandas):**
+
 ```python
 # Wrong — computes avg_charge over ALL time then joins; contaminates every row with future data:
 provider_avg = claims.groupby('provider_id')['charge_amount'].mean()
@@ -326,6 +328,7 @@ claims = claims.merge(provider_avg, on='provider_id')
 ```
 
 **Bug C — Using the wrong date column for the lookback window:**
+
 ```python
 # Wrong — service_date ignores submission lag; future-received claims can appear in window:
 window = all_claims[all_claims['service_date'] >= target_date - timedelta(days=30)]
@@ -384,11 +387,11 @@ Rules baseline:
 
 **Ablation comparison (shown in analytics section):**
 
-| Method | What it catches |
-|---|---|
-| Rules baseline | Obvious violations detectable by deterministic checks |
-| XGBoost | Pattern combinations rules miss (subtle upcoding within same category, volume patterns, multi-feature interactions) |
-| Rules + XGBoost | Full detection — rules catch the obvious, ML catches the subtle |
+| Method          | What it catches                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Rules baseline  | Obvious violations detectable by deterministic checks                                                               |
+| XGBoost         | Pattern combinations rules miss (subtle upcoding within same category, volume patterns, multi-feature interactions) |
+| Rules + XGBoost | Full detection — rules catch the obvious, ML catches the subtle                                                     |
 
 If XGBoost doesn't beat the rules baseline on the holdout set (which uses different anomaly distributions), that's an honest finding worth reporting.
 
@@ -460,11 +463,11 @@ CMS Manual PDFs/HTML → Document Parser (markitdown/PyPDF2)
 
 **Retrieval Strategy:**
 
-| Query Type | Method |
-|---|---|
-| "What does CMS say about billing for X?" | Semantic vector search (top-5 chunks) |
-| "What are the rules for modifier -59?" | Keyword filter + semantic ranking |
-| "Fraud indicators for upcoding" | Semantic search with metadata filter (topic=fraud) |
+| Query Type                               | Method                                             |
+| ---------------------------------------- | -------------------------------------------------- |
+| "What does CMS say about billing for X?" | Semantic vector search (top-5 chunks)              |
+| "What are the rules for modifier -59?"   | Keyword filter + semantic ranking                  |
+| "Fraud indicators for upcoding"          | Semantic search with metadata filter (topic=fraud) |
 
 **Quality controls:**
 
@@ -521,6 +524,7 @@ The architecture is **extensible** — these sources plug into the same retrieva
 LLMs are used **only** for rationale synthesis — the one step that genuinely requires natural language generation. Triage (classification + routing) and evidence gathering (tool execution) are deterministic because they don't need an LLM: the routing logic is a function of XGBoost/SHAP/rules outputs, and evidence tools return structured data.
 
 This is architecturally stronger than 3 LLM agents because:
+
 - Deterministic steps are fast (<2s total), reliable, and unit-testable
 - One LLM failure point instead of three
 - LangGraph still provides typed state, observable nodes, and conditional edges
@@ -635,6 +639,7 @@ GET    /api/ncci/{code_1}/{code_2}          # Direct NCCI conflict check
 SSE is straightforward in FastAPI via `sse-starlette`, but it sits at the backend/frontend integration seam and the demo depends on it. These are the failure modes to handle explicitly:
 
 **Required headers (missing these causes silent browser-side failures):**
+
 ```python
 # FastAPI SSE response must include:
 headers = {
@@ -646,6 +651,7 @@ headers = {
 ```
 
 **LLM failure mid-stream (handle explicitly, do not let the connection break silently):**
+
 ```python
 async def investigation_stream(claim_id: str):
     try:
@@ -670,6 +676,7 @@ async def investigation_stream(claim_id: str):
 
 **Fallback plan if SSE proves unreliable during Week 3:**
 If SSE causes persistent issues (connection drops, buffering, CORS), replace with polling:
+
 - Backend runs investigation async and stores intermediate states to Parquet/dict in memory
 - Frontend polls `GET /api/claims/{id}/investigation/status` every 500ms
 - Response includes a `status` field: `triage_complete`, `evidence_complete`, `rationale_complete`
@@ -1059,18 +1066,18 @@ payment-integrity-ai/
 
 ## 14. Risks & Mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| **Point-in-time feature leakage (silent)** | **High** | **Write the leakage unit test (§4.1) before writing feature code. If the test doesn't exist, you cannot know whether your AUC is honest.** |
-| **SSE integration reliability** | **High** | **Build SSE in Week 2. Have the polling fallback (§7.2) designed in advance. Do not leave SSE to Week 3 — it is a demo-blocker if it fails late.** |
+| Risk                                           | Impact   | Mitigation                                                                                                                                                                                                        |
+| ---------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Point-in-time feature leakage (silent)**     | **High** | **Write the leakage unit test (§4.1) before writing feature code. If the test doesn't exist, you cannot know whether your AUC is honest.**                                                                        |
+| **SSE integration reliability**                | **High** | **Build SSE in Week 2. Have the polling fallback (§7.2) designed in advance. Do not leave SSE to Week 3 — it is a demo-blocker if it fails late.**                                                                |
 | **Rationale prompt engineering left too late** | **High** | **Start prompt iteration in Week 2. One LLM call must reliably produce structured JSON, cite only retrieved sources, and score >85% in manual eval. This takes 2-3 days of iteration — it is not Week 4 polish.** |
-| Rationale hallucinates policy sources | High | Pre-gather all evidence before the LLM call. Prompt must explicitly instruct the model to cite only sources present in the evidence package. Validate on 50 samples during Week 2. |
-| RAG retrieves generic policy text | High | Narrow corpus to Part B-relevant chapters; validate with golden set of ~50 queries |
-| Synthea data doesn't look realistic enough | Medium | Calibrate with CMS public statistics; curate demo subset |
-| ML doesn't beat rules baseline | Medium | This is an honest finding — report it transparently in ablation |
-| LLM API costs during development | Medium | Use GPT-4o-mini for iteration, GPT-4o/Claude for demo only |
-| 4 weeks is tight | Medium | Non-negotiable core: ML + orchestrator + investigation UI. Cut polish if behind |
-| NCCI data format changes | Low | Pin to specific quarterly release; document version |
+| Rationale hallucinates policy sources          | High     | Pre-gather all evidence before the LLM call. Prompt must explicitly instruct the model to cite only sources present in the evidence package. Validate on 50 samples during Week 2.                                |
+| RAG retrieves generic policy text              | High     | Narrow corpus to Part B-relevant chapters; validate with golden set of ~50 queries                                                                                                                                |
+| Synthea data doesn't look realistic enough     | Medium   | Calibrate with CMS public statistics; curate demo subset                                                                                                                                                          |
+| ML doesn't beat rules baseline                 | Medium   | This is an honest finding — report it transparently in ablation                                                                                                                                                   |
+| LLM API costs during development               | Medium   | Use GPT-4o-mini for iteration, GPT-4o/Claude for demo only                                                                                                                                                        |
+| 4 weeks is tight                               | Medium   | Non-negotiable core: ML + orchestrator + investigation UI. Cut polish if behind                                                                                                                                   |
+| NCCI data format changes                       | Low      | Pin to specific quarterly release; document version                                                                                                                                                               |
 
 ---
 
@@ -1094,25 +1101,25 @@ These are discussion points — things the system could do with more time or at 
 
 ### V1 Scope Revision (from original design)
 
-| Area | Original | V1 | Reason |
-|---|---|---|---|
-| **Name** | Payment Integrity Claims Intelligence Platform | Claims Investigation Intelligence Assistant | Honest framing |
-| **Domain** | All payment integrity claims | Medicare Part B professional only | Narrow to what public corpus supports |
-| **Anomaly types** | 6 types | 3 types (upcoding, NCCI violations, duplicates) | Only types with verifiable policy backing |
-| **ML models** | 3-model ensemble → XGBoost + IF dual-signal | XGBoost only | One model done right > two done halfway |
-| **NCCI** | Full modifier-bypass logic | Simplified conflict-exists check | Full modifier logic is v2 |
-| **Agents** | 3 LLM agents (triage, evidence, rationale) | Deterministic triage + evidence, one LLM rationale | LLMs only where they add value |
-| **Chat** | Embedded conversational chat in claim detail | Cut (v2) | Scope trap; rationale output is sufficient |
-| **Storage** | SQLite + ORM | Parquet loaded in-memory | Simpler, more honest for prototype, Abacus-native format |
-| **Analytics** | Full analytics page | Small ablation summary in dashboard | Don't build a product; prove the ML works |
-| **Frontend pages** | 4-6 pages | 3 pages (dashboard, claims, claim detail) | Each page polished and stable |
-| **Evaluation** | Random split → grouped temporal | Grouped temporal + injection distribution partitioning | Prevent leakage AND memorization |
-| **Framing** | "audit-ready", "production-ready" | "investigation-support", "capability demonstration" | Honest about what synthetic data can prove |
+| Area               | Original                                       | V1                                                     | Reason                                                   |
+| ------------------ | ---------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------- |
+| **Name**           | Payment Integrity Claims Intelligence Platform | Claims Investigation Intelligence Assistant            | Honest framing                                           |
+| **Domain**         | All payment integrity claims                   | Medicare Part B professional only                      | Narrow to what public corpus supports                    |
+| **Anomaly types**  | 6 types                                        | 3 types (upcoding, NCCI violations, duplicates)        | Only types with verifiable policy backing                |
+| **ML models**      | 3-model ensemble → XGBoost + IF dual-signal    | XGBoost only                                           | One model done right > two done halfway                  |
+| **NCCI**           | Full modifier-bypass logic                     | Simplified conflict-exists check                       | Full modifier logic is v2                                |
+| **Agents**         | 3 LLM agents (triage, evidence, rationale)     | Deterministic triage + evidence, one LLM rationale     | LLMs only where they add value                           |
+| **Chat**           | Embedded conversational chat in claim detail   | Cut (v2)                                               | Scope trap; rationale output is sufficient               |
+| **Storage**        | SQLite + ORM                                   | Parquet loaded in-memory                               | Simpler, more honest for prototype, Abacus-native format |
+| **Analytics**      | Full analytics page                            | Small ablation summary in dashboard                    | Don't build a product; prove the ML works                |
+| **Frontend pages** | 4-6 pages                                      | 3 pages (dashboard, claims, claim detail)              | Each page polished and stable                            |
+| **Evaluation**     | Random split → grouped temporal                | Grouped temporal + injection distribution partitioning | Prevent leakage AND memorization                         |
+| **Framing**        | "audit-ready", "production-ready"              | "investigation-support", "capability demonstration"    | Honest about what synthetic data can prove               |
 
 ### Architectural Critique Fixes (Retained from Round 2)
 
-| Area | Issue | Fix |
-|---|---|---|
-| **Injection distribution** | XGBoost memorizes injection function | Train/test use different anomaly parameter distributions (§2.2) |
-| **Temporal anchor** | `service_date` ignores claims lag; creates leakage | Synthetic `claim_receipt_date`; all features anchored to it (§2.1, §4.1) |
-| **Empty evidence** | Sequential chain forces hallucination on empty context | Conditional edge: empty evidence → halt (§6.1, §6.3) |
+| Area                       | Issue                                                  | Fix                                                                      |
+| -------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| **Injection distribution** | XGBoost memorizes injection function                   | Train/test use different anomaly parameter distributions (§2.2)          |
+| **Temporal anchor**        | `service_date` ignores claims lag; creates leakage     | Synthetic `claim_receipt_date`; all features anchored to it (§2.1, §4.1) |
+| **Empty evidence**         | Sequential chain forces hallucination on empty context | Conditional edge: empty evidence → halt (§6.1, §6.3)                     |
