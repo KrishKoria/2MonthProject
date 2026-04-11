@@ -34,12 +34,12 @@
 
 ### Data Models & API Scaffolding
 
-- [ ] T005a [P] Create core claim and risk Pydantic v2 models in `backend/app/data/schemas/claims.py`: `ClaimRecord`, `RiskScore`, `AnomalyLabel`, `Provider`, all status/band enums (`claim_status`, `anomaly_type`, `risk_band`)
-- [ ] T005b [P] Create investigation lifecycle Pydantic v2 models in `backend/app/data/schemas/investigation.py`: `Investigation`, `TriageResult`, `HumanDecision`, `InvestigationState` TypedDict, `investigation_status` enum
-- [ ] T005c [P] Create evidence and rationale Pydantic v2 models in `backend/app/data/schemas/evidence.py`: `EvidenceEnvelope`, `RationaleResult`, `PolicyCitation`, `NCCIFinding`, `DuplicateMatch`, `SourceRecord`; re-export all from `backend/app/data/schemas/__init__.py`
-- [ ] T006 Implement Parquet data loader in `backend/app/data/loader.py`: FastAPI lifespan context manager loading `medical_claims.parquet`, `risk_scores.parquet`, `provider_roster.parquet`, `anomaly_labels.parquet`, NCCI CSV, and in-memory investigations dict at startup
-- [ ] T007 Build FastAPI app entry point with lifespan, CORS middleware, global error handler, and structured logging in `backend/app/main.py`
-- [ ] T008 [P] Create FastAPI dependency injection providers for data store and orchestrator in `backend/app/api/dependencies.py`
+- [x] T005a [P] Create core claim and risk Pydantic v2 models in `backend/app/data/schemas/claims.py`: `ClaimRecord`, `RiskScore`, `AnomalyLabel`, `Provider`, all status/band enums (`claim_status`, `anomaly_type`, `risk_band`)
+- [x] T005b [P] Create investigation lifecycle Pydantic v2 models in `backend/app/data/schemas/investigation.py`: `Investigation`, `TriageResult`, `HumanDecision`, `InvestigationState` TypedDict, `investigation_status` enum
+- [x] T005c [P] Create evidence and rationale Pydantic v2 models in `backend/app/data/schemas/evidence.py`: `EvidenceEnvelope`, `RationaleResult`, `PolicyCitation`, `NCCIFinding`, `DuplicateMatch`, `SourceRecord`; re-export all from `backend/app/data/schemas/__init__.py`
+- [x] T006 Implement Parquet data loader in `backend/app/data/loader.py`: FastAPI lifespan context manager loading `medical_claims.parquet`, `risk_scores.parquet`, `provider_roster.parquet`, `anomaly_labels.parquet`, NCCI CSV, and in-memory investigations dict at startup
+- [x] T007 Build FastAPI app entry point with lifespan, CORS middleware, global error handler, and structured logging in `backend/app/main.py`
+- [x] T008 [P] Create FastAPI dependency injection providers for data store and orchestrator in `backend/app/api/dependencies.py`
 
 ### Synthetic Data Generation
 
