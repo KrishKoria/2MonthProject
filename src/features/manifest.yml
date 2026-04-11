@@ -1,0 +1,28 @@
+claim_features:
+  - charge_amount
+  - allowed_amount
+  - paid_amount
+  - charge_to_allowed_ratio
+  - num_procedure_codes
+  - num_diagnosis_codes
+  - num_modifiers
+  - days_between_service_and_submission
+  - place_of_service_encoded
+  - procedure_complexity_score
+  - has_ncci_conflict
+  - modifier_count
+  - modifier_59_present
+
+provider_features:
+  - provider_avg_charge_30d
+  - provider_claim_volume_30d
+  - provider_specialty_charge_percentile
+  - provider_unique_patients_30d
+  - provider_procedure_concentration
+  - provider_peer_deviation
+
+member_features:
+  - member_claim_frequency_90d
+  - member_unique_providers_90d
+  - member_avg_charge_90d
+  - member_chronic_condition_count
