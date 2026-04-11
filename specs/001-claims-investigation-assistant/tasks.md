@@ -17,10 +17,10 @@
 
 **Purpose**: Project initialization — directory structure, configuration, and the feature manifest. No logic.
 
-- [ ] T001 Create backend project structure with pyproject.toml, all package directories, and `__init__.py` files per plan.md layout in `backend/`
-- [ ] T002 [P] Create data directory tree: `data/raw/`, `data/processed/`, `data/features/`, `data/scores/`, `data/ncci/`, `data/policy_docs/`, `data/chroma/`
-- [ ] T003 [P] Create backend environment config class and `.env.example` in `backend/app/config.py` and `backend/.env.example` (OPENAI_API_KEY, DATA_DIR, CHROMA_DIR, LLM_MODEL, RISK_THRESHOLD, LOG_LEVEL)
-- [ ] T004 Create feature manifest at `src/features/manifest.yml` with all 23 features: 13 claim features, 6 provider features, 4 member features per data-model.md
+- [x] T001 Create backend project structure with pyproject.toml, all package directories, and `__init__.py` files per plan.md layout in `backend/`
+- [x] T002 [P] Create data directory tree: `data/raw/`, `data/processed/`, `data/features/`, `data/scores/`, `data/ncci/`, `data/policy_docs/`, `data/chroma/`
+- [x] T003 [P] Create backend environment config class and `.env.example` in `backend/app/config.py` and `backend/.env.example` (OPENAI_API_KEY, DATA_DIR, CHROMA_DIR, LLM_MODEL, RISK_THRESHOLD, LOG_LEVEL)
+- [x] T004 Create feature manifest at `src/features/manifest.yml` with all 23 features: 13 claim features, 6 provider features, 4 member features per data-model.md
 
 **Checkpoint**: Project skeleton exists; `backend/` and `data/` directories are ready; `src/features/manifest.yml` is in place.
 
@@ -56,8 +56,8 @@
 - [ ] T016 Implement XGBoost model training with grouped temporal split (70/15/15 by `claim_receipt_date`, no provider in both train+test) and precision gate (≥ 0.75 at operating threshold) in `backend/app/ml/model.py`
 - [ ] T017 [P] Implement SHAP TreeExplainer wrapper with invariant check (`abs(sum(shap_values) - (pred - base_value)) < 1e-5`) in `backend/app/ml/explainer.py`
 - [ ] T018 Implement end-to-end batch scoring pipeline (features → model → SHAP → risk_band assignment) in `backend/app/ml/pipeline.py`
-- [ ] T019 Create model training + ablation evaluation script outputting `data/scores/model_metadata.json` in `backend/scripts/train_model.py`
-- [ ] T020 Create batch scoring script outputting `data/scores/risk_scores.parquet` in `backend/scripts/score_claims.py`
+- [ ] T019 Create model training + ablation evaluation script outputting `data/scores/model_metadata.json` in `backend/scripts/train_model.py`; add schema validation step: load the output JSON and assert all required keys are present (`auc_roc`, `precision_at_k`, `precision_recall_curve`, `per_anomaly_recall`, `ablation`) before script exits
+- [ ] T020 Create batch scoring script outputting `data/scores/risk_scores.parquet` in `backend/scripts/score_claims.py`; add schema validation step: load the output Parquet and assert all required columns are present (`claim_id`, `xgboost_score`, `shap_values`, `rules_flags`, `risk_band`, `scored_at`) and no nulls in `claim_id` before script exits
 
 ### Evidence Infrastructure (NCCI + RAG)
 
@@ -65,7 +65,7 @@
 - [ ] T022 [P] Implement CMS policy document parser and chunker (~500 tokens, 50-token overlap) in `backend/app/evidence/rag_ingest.py`
 - [ ] T023 [P] Implement ChromaDB embedding and single-collection indexing (`cms_policy`, `text-embedding-3-small`, metadata: source/chapter/section/topic) in `backend/app/evidence/rag_embeddings.py`
 - [ ] T024 Implement semantic RAG retriever with metadata-filtered search in `backend/app/evidence/rag_retriever.py`
-- [ ] T025 Create evidence setup script (download policy docs, ingest RAG corpus, load NCCI CSV) in `backend/scripts/setup_evidence.py`
+- [ ] T025 Create evidence setup script (download policy docs, ingest RAG corpus, load NCCI CSV) in `backend/scripts/setup_evidence.py`; add validation step: after ingestion, assert ChromaDB collection `cms_policy` has ≥ 1000 documents and NCCI CSV loaded ≥ 1 edit row before script exits
 
 ### SSE & Shared Frontend Infrastructure
 
@@ -91,7 +91,7 @@
 - [ ] T032 [P] [US1] Create KPI summary cards component (total flagged, high-risk count, investigation rate) in `frontend/src/components/dashboard/KpiCards.tsx`
 - [ ] T033 [P] [US1] Create risk distribution bar chart (high/medium/low counts) using Recharts in `frontend/src/components/charts/RiskDistributionChart.tsx`
 - [ ] T034 [P] [US1] Create anomaly type distribution display and ablation summary card (rules-only vs ML vs combined) in `frontend/src/components/dashboard/AblationCard.tsx`
-- [ ] T035 [P] [US1] Create sortable/filterable claims table in `frontend/src/components/claims/ClaimsTable.tsx`: display columns (risk band indicator, anomaly type label, charge amount, status badge); filter controls include risk_band select, anomaly_type select, provider_id text input, date_from/date_to date pickers — all wired to GET /api/claims query params
+- [ ] T035 [P] [US1] Create sortable/filterable claims table in `frontend/src/components/claims/ClaimsTable.tsx`: display columns (claim_id, member_id, provider_id, service_date, risk band indicator, anomaly type label, charge amount, status badge); filter controls include risk_band select, anomaly_type select, provider_id text input, date_from/date_to date pickers — all wired to GET /api/claims query params
 - [ ] T036 [US1] Implement dashboard page composing KPI cards, risk distribution chart, and ablation card with `GET /api/analytics/overview` data in `frontend/src/app/page.tsx`
 - [ ] T037 [US1] Implement claims explorer page with filterable/sortable table and empty-state handling in `frontend/src/app/claims/page.tsx`
 - [ ] T038 [US1] Add navigation layout with links to Dashboard and Claims Explorer, and "Synthetic Data Demo" banner in `frontend/src/app/layout.tsx`
@@ -124,9 +124,10 @@
 - [ ] T052 [P] [US2] Create risk score panel with numeric gauge and SHAP waterfall chart (top contributing features) in `frontend/src/components/investigation/RiskPanel.tsx`
 - [ ] T053 [P] [US2] Create evidence cards displaying policy citations (source/chapter/section), NCCI findings, provider context, and sources-consulted status list in `frontend/src/components/investigation/EvidenceCards.tsx`
 - [ ] T054 [P] [US2] Create streaming rationale display with progressive text render, confidence level, recommended action, and "Manual Review Required" halt state in `frontend/src/components/investigation/RationaleStream.tsx`
-- [ ] T055 [US2] Implement claim detail page in `frontend/src/app/claims/[id]/page.tsx`: display all claim fields (claim_id, member_id, provider_id, service_date, claim_receipt_date, procedure_codes, diagnosis_codes, modifiers, charge_amount, allowed_amount, paid_amount, place_of_service, claim_status, anomaly_type); render risk panel; show full anomaly_flags dict from TriageResult with detected/not_applicable/insufficient_data badges for all 3 types (not only the primary); "Investigate" button triggering SSE stream; sequential rendering of triage → evidence → rationale; error/halt handling
+- [ ] T055 [US2] Implement claim detail page in `frontend/src/app/claims/[id]/page.tsx`: display all claim fields (claim_id, member_id, provider_id, service_date, claim_receipt_date, procedure_codes, diagnosis_codes, modifiers, charge_amount, allowed_amount, paid_amount, place_of_service, claim_status, anomaly_type); render risk panel; show full anomaly_flags dict from TriageResult with detected/not_applicable/insufficient_data badges for all 3 types (not only the primary); when `investigation === null` show "Investigate" button triggering SSE stream; when `investigation !== null` show the stored result (rationale panel, evidence cards) alongside a "Re-investigate" button that triggers a new SSE stream and replaces the previous result; sequential rendering of triage → evidence → rationale; error/halt handling
+- [ ] T056a [US2] Implement investigation persistence write path in `backend/app/data/loader.py`: add `save_investigation(investigation: Investigation)` that serializes the in-memory investigations dict to `data/scores/investigations.parquet`; call it from the investigation SSE endpoint (T046) on `complete`/`halt`/`error` events; add assertion in `backend/tests/test_api.py` that an investigation survives a simulated restart (write → reload → verify result intact)
 
-**Checkpoint**: Full investigation pipeline functional. SSE streaming works end-to-end. Empty-evidence halt renders correctly. Error events display without broken UI.
+**Checkpoint**: Full investigation pipeline functional. SSE streaming works end-to-end. Empty-evidence halt renders correctly. Error events display without broken UI. **Investigation results persist across restarts (FR-011) — this checkpoint must not be signed off until T056a is complete.**
 
 ---
 
@@ -138,7 +139,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T056 [US3] Implement `PATCH /api/claims/{claim_id}/investigation` route accepting `{decision, notes?}`, validating state machine transition (`pending_review` → accepted/rejected/escalated), updating claim status and investigation in-memory store in `backend/app/api/routes/investigation.py`
+- [ ] T056 [US3] Implement `PATCH /api/claims/{claim_id}/investigation` route accepting `{decision, notes?}`, validating state machine transition (`pending_review` → accepted/rejected/escalated), updating claim status and investigation in-memory store, and calling `save_investigation()` (T056a) on decision write in `backend/app/api/routes/investigation.py`
 - [ ] T057 [US3] Implement claim status transition enforcement in `backend/app/data/loader.py`: validate allowed transitions per state machine, raise domain error on invalid transitions
 - [ ] T058 [P] [US3] Create investigator feedback form component with Accept/Reject/Escalate buttons, optional notes textarea, and submit handler in `frontend/src/components/investigation/FeedbackForm.tsx`
 - [ ] T059 [US3] Integrate feedback form and AI-vs-human labeling into the claim detail page: show feedback form below rationale when investigation is complete and no decision recorded; show recorded decision with "Human Confirmed" label when decision exists in `frontend/src/app/claims/[id]/page.tsx`
@@ -181,6 +182,8 @@
 - [ ] T072a [P] Write pipeline latency test in `backend/tests/test_performance.py`: trigger investigation on a representative flagged claim, assert total elapsed time < 15s, assert triage SSE event arrives < 100ms after trigger, assert evidence event arrives < 2s after triage — LLM mocked to isolate pipeline latency from LLM variability
 - [ ] T073 Verify ≥80% line coverage on `backend/app/ml/`, `backend/app/orchestrator/`, `backend/app/api/` via `pytest --cov=app --cov-report=term-missing`
 - [ ] T074 Run complete end-to-end quickstart validation per `quickstart.md` steps 1–8 and confirm all 4 verification scenarios pass
+- [ ] T075 [P] Implement and run rationale prompt schema validation: implement `backend/scripts/validate_prompt.py` that loads 50 representative flagged claims from Parquet, runs the rationale node (real LLM, real ChromaDB), and for each output asserts `RationaleResult` Pydantic schema validates, `policy_citations` is non-empty, all 3 `anomaly_flags_addressed` keys are present, and `recommended_action` is non-null; gate: ≥90% of outputs must pass all assertions before T044 is considered shippable (constitution R-007, plan.md)
+- [ ] T075a [P] Evaluate rationale quality against SC-003: first create `specs/001-claims-investigation-assistant/rubric.md` defining the evaluation rubric — "useful" (correct anomaly type, ≥1 valid policy citation, recommended action is actionable), "partially useful" (correct anomaly type, weak/absent citations), "not useful" (wrong anomaly type or hallucinated citations); then apply the rubric to all 50-claim outputs from T075 and record results in `data/scores/rationale_eval_results.json`; gate: ≥85% rated "useful" before Phase 7 checkpoint is signed off (spec.md SC-003)
 
 ---
 
@@ -199,6 +202,9 @@
   - US3 depends on US2 (investigation must exist before feedback can be submitted)
   - US4 is independent of US2/US3 — shares only the analytics route from US1
 - **Polish (Phase 7)**: After all desired user stories are complete
+  - T075 depends on T043 (prompt) and T044 (rationale node) being complete — must run before Phase 7 checkpoint
+  - T075a depends on T075 (needs the 50-claim output) — can be done immediately after T075
+  - T056a (persistence write path) must be complete before T072 (API tests assert restart survival)
 
 ### User Story Dependencies
 
@@ -226,6 +232,7 @@
 - T058 can run in parallel with T057 (different files, US3)
 - T063, T064, T065, T065a can run in parallel (different analytics components, US4)
 - T067, T068, T070, T071, T072, T072a can all run in parallel (different test files)
+- T075 and T075a must run sequentially (T075a depends on T075 output); both can run in parallel with T067–T072a
 
 ---
 
@@ -319,6 +326,9 @@ US3 integrates after US2 completes (small surface area — one PATCH route + 2 f
 - Each user story is independently completable and testable
 - SHAP invariant check in T017/T044 must use `TreeExplainer` only — `Explainer` is not acceptable (constitution)
 - LLM must be mocked in all orchestrator tests (T069) — real Parquet fixtures are NOT mocked (constitution)
-- Investigation in-memory store persists to `data/scores/investigations.parquet` on write (data-model.md)
+- Investigation in-memory store persists to `data/scores/investigations.parquet` on write via T056a (Phase 4) — T046 calls `save_investigation()` on complete/halt/error; T056 calls it on decision write
+- **T056a is a hard gate for FR-011**: lives in Phase 4 alongside T046; Phase 4 checkpoint must not be signed off until T056a is complete; T072 API tests include restart-survival assertion
+- **T075 is a hard gate for production inference**: rationale prompt must pass ≥90% schema-correctness on 50 claims before T044 is considered shippable (R-007, plan.md)
+- **T075a is a hard gate for SC-003**: ≥85% "useful" rating on 50-claim sample required before Phase 7 checkpoint is signed off
 - Exactly 3 frontend pages: `/`, `/claims`, `/claims/[id]` — no additions (constitution V)
 - All 4 SSE response headers required or browser-side failures occur silently (constitution V, sse-events.md)

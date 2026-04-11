@@ -28,5 +28,8 @@
 6. All API schemas use Pydantic. All route handlers and LangGraph nodes are async. No bare `except:`.
 7. TypeScript strict mode enforced. No `any` without justification.
 8. LLM mocked in all orchestrator integration tests.
+9. **Output Correctness** (Principle VI): Feature engineering validated against ≥10 hand-computed claim fixtures; XGBoost MUST NOT be promoted if precision at threshold < 0.75; SHAP attributions MUST sum to (pred − base) within 1e-5; NCCI lookups cross-checked against reference fixtures in `backend/tests/test_ncci_engine.py`; LLM rationale MUST pass Pydantic schema validation before response returned; claim status MUST follow state machine (`pending_review → {accepted | rejected | escalated | manual_review_required}`).
+10. **Investigation Completeness** (Principle VII): Triage evaluates all 3 anomaly types with explicit `not_applicable` flag; evidence node attempts all 4 sources (unavailable ones recorded); LLM rationale addresses every raised anomaly flag; all features in `src/features/manifest.yml` must be computed or raise `FeatureComputationError`; ≥80% line coverage on `backend/app/ml/`, `backend/app/orchestrator/`, `backend/app/api/`.
+11. **Scope Deferral** — out of scope for v1 (amend constitution to change): Isolation Forest, embedded chat, NCCI modifier-bypass, multi-agent LLM, SQLite/ORM, full analytics page, production auth, real PHI.
 
 <!-- END SPECIFY MANAGED -->
