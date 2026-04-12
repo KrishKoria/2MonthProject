@@ -15,10 +15,11 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Approximate tokens using whitespace word count * 1.3 — good enough for chunking
+# English subword tokenizers emit ~1.33 tokens per whitespace word, i.e.
+# ~0.75 words per token. So 500 tokens ≈ 375 words.
 CHUNK_SIZE_TOKENS = 500
 CHUNK_OVERLAP_TOKENS = 50
-WORDS_PER_TOKEN = 0.75  # ~4 chars/token, ~5 chars/word
+WORDS_PER_TOKEN = 0.75
 
 
 @dataclass
@@ -31,10 +32,6 @@ class DocumentChunk:
     chapter: str | None
     section: str | None
     topic: str | None
-
-
-def _tokens_to_words(n_tokens: int) -> int:
-    return max(1, int(n_tokens * WORDS_PER_TOKEN / 0.75))  # keep loose
 
 
 def _iter_chunks(text: str, chunk_words: int, overlap_words: int) -> list[str]:
@@ -88,8 +85,8 @@ def parse_document(path: Path) -> list[DocumentChunk]:
     topic = path.parent.name if path.parent.name != path.parent.parent.name else None
     source = path.name
 
-    chunk_words = int(CHUNK_SIZE_TOKENS / WORDS_PER_TOKEN)
-    overlap_words = int(CHUNK_OVERLAP_TOKENS / WORDS_PER_TOKEN)
+    chunk_words = max(1, int(CHUNK_SIZE_TOKENS * WORDS_PER_TOKEN))
+    overlap_words = max(0, int(CHUNK_OVERLAP_TOKENS * WORDS_PER_TOKEN))
 
     chunks: list[DocumentChunk] = []
     for i, chunk_text in enumerate(_iter_chunks(text, chunk_words, overlap_words)):
