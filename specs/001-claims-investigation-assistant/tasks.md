@@ -65,18 +65,18 @@
 
 ### Evidence Infrastructure (NCCI + RAG)
 
-- [ ] T021 Implement NCCI conflict lookup engine in `backend/app/evidence/ncci_engine.py`: load `practitioner_ptp_edits.csv` at startup, `lookup_ncci_conflict(code_1, code_2, service_date)` as sorted-tuple exact-match with date-range filtering
-- [ ] T022 [P] Implement CMS policy document parser and chunker (~500 tokens, 50-token overlap) in `backend/app/evidence/rag_ingest.py`
-- [ ] T023 [P] Implement ChromaDB embedding and single-collection indexing (`cms_policy`, `text-embedding-3-small`, metadata: source/chapter/section/topic) in `backend/app/evidence/rag_embeddings.py`
-- [ ] T024 Implement semantic RAG retriever with metadata-filtered search in `backend/app/evidence/rag_retriever.py`
-- [ ] T025 Create evidence setup script (download policy docs, ingest RAG corpus, load NCCI CSV) in `backend/scripts/setup_evidence.py`; add validation step: after ingestion, assert ChromaDB collection `cms_policy` has ≥ 1000 documents and NCCI CSV loaded ≥ 1 edit row before script exits
-- [ ] T025 Create evidence setup script (download policy docs, ingest RAG corpus, load NCCI CSV) in `backend/scripts/setup_evidence.py`; add validation step: after ingestion, assert ChromaDB collection `cms_policy` has ≥ 1000 documents and NCCI CSV loaded ≥ 1 edit row before script exits
+- [x] T021 Implement NCCI conflict lookup engine in `backend/app/evidence/ncci_engine.py`: load `practitioner_ptp_edits.csv` at startup, `lookup_ncci_conflict(code_1, code_2, service_date)` as sorted-tuple exact-match with date-range filtering
+- [x] T022 [P] Implement CMS policy document parser and chunker (~500 tokens, 50-token overlap) in `backend/app/evidence/rag_ingest.py`
+- [x] T023 [P] Implement ChromaDB embedding and single-collection indexing (`cms_policy`, `text-embedding-3-small`, metadata: source/chapter/section/topic) in `backend/app/evidence/rag_embeddings.py`
+- [x] T024 Implement semantic RAG retriever with metadata-filtered search in `backend/app/evidence/rag_retriever.py`
+- [x] T025 Create evidence setup script (download policy docs, ingest RAG corpus, load NCCI CSV) in `backend/scripts/setup_evidence.py`; add validation step: after ingestion, assert ChromaDB collection `cms_policy` has ≥ 1000 documents and NCCI CSV loaded ≥ 1 edit row before script exits
+- [x] T025 Create evidence setup script (download policy docs, ingest RAG corpus, load NCCI CSV) in `backend/scripts/setup_evidence.py`; add validation step: after ingestion, assert ChromaDB collection `cms_policy` has ≥ 1000 documents and NCCI CSV loaded ≥ 1 edit row before script exits
 
 ### SSE & Shared Frontend Infrastructure
 
-- [ ] T026 Implement SSE streaming helpers (EventSourceResponse wrapper, event emitter with required headers: `text/event-stream`, `no-cache`, `X-Accel-Buffering: no`, CORS) in `backend/app/utils/sse.py`
-- [ ] T027 [P] Create all shared TypeScript types in `frontend/src/lib/types.ts`: `Claim`, `RiskScore`, `Investigation`, `TriageResult`, `EvidenceEnvelope`, `RationaleResult`, `HumanDecision`, `PolicyCitation`, `NCCIFinding`, `SourceRecord`, all union string literal types — strict mode, no `any`
-- [ ] T028 [P] Create typed REST API client with fetch wrapper and response envelope unwrapping in `frontend/src/lib/api.ts`
+- [x] T026 Implement SSE streaming helpers (EventSourceResponse wrapper, event emitter with required headers: `text/event-stream`, `no-cache`, `X-Accel-Buffering: no`, CORS) in `backend/app/utils/sse.py`
+- [x] T027 [P] Create all shared TypeScript types in `frontend/src/lib/types.ts`: `Claim`, `RiskScore`, `Investigation`, `TriageResult`, `EvidenceEnvelope`, `RationaleResult`, `HumanDecision`, `PolicyCitation`, `NCCIFinding`, `SourceRecord`, all union string literal types — strict mode, no `any`
+- [x] T028 [P] Create typed REST API client with fetch wrapper and response envelope unwrapping in `frontend/src/lib/api.ts`
 
 **Checkpoint**: Foundation ready — data generated, model trained, evidence indexed, schemas defined, API scaffolded, frontend types in place. User story implementation can now begin.
 

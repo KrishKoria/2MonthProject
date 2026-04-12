@@ -13,8 +13,11 @@ import type {
   NCCIFinding,
 } from "./types";
 
+declare const process: { env: Record<string, string | undefined> };
+
 const DEFAULT_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_BASE_URL) ||
+  "http://localhost:8000";
 
 export class ApiError extends Error {
   constructor(
@@ -71,8 +74,10 @@ async function request<T>(
   return body as T;
 }
 
-function buildQuery(params: Record<string, string | number | undefined | null>): string {
-  const entries = Object.entries(params).filter(
+type QueryValue = string | number | undefined | null;
+
+function buildQuery(params: Record<string, QueryValue> | ClaimsQuery): string {
+  const entries = Object.entries(params as Record<string, QueryValue>).filter(
     ([, v]) => v !== undefined && v !== null && v !== "",
   );
   if (entries.length === 0) return "";
