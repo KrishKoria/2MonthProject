@@ -136,8 +136,15 @@ export interface ClaimDetail {
   investigation: Investigation | null;
 }
 
+export type ClaimListItem = Claim & {
+  risk_score: number | null;
+  risk_band: RiskBand | null;
+  rules_flags: string[];
+  shap_values: Record<string, number>;
+};
+
 export interface ClaimsPage {
-  items: Array<Claim & { risk_score: RiskScore | null }>;
+  claims: ClaimListItem[];
   page: number;
   page_size: number;
   total: number;
@@ -147,6 +154,8 @@ export interface AnalyticsOverview {
   total_claims: number;
   flagged_count: number;
   high_risk_count: number;
+  investigation_rate: number;
+  avg_risk_score: number;
   anomaly_distribution: Record<AnomalyType, number>;
   rules_baseline_flagged: number;
   ml_only_flagged: number;
