@@ -56,3 +56,5 @@ coverage/
 .serena/
 .specify/
 .claude/
+
+*.pdf
