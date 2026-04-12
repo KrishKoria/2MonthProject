@@ -52,8 +52,20 @@ CMS_MANUAL_CHAPTERS: dict[str, list[str]] = {
     "clm104c12_physicians_em": [
         "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/clm104c12.pdf",
     ],
+    "clm104c13_radiology": [
+        "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/clm104c13.pdf",
+    ],
+    "clm104c16_laboratory": [
+        "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/clm104c16.pdf",
+    ],
+    "clm104c17_drugs_biologicals": [
+        "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/clm104c17.pdf",
+    ],
     "clm104c23_fee_schedule_coding": [
         "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/clm104c23.pdf",
+    ],
+    "clm104c26_cms1500_form": [
+        "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/clm104c26.pdf",
     ],
     "clm104c30_financial_liability": [
         "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/clm104c30.pdf",
