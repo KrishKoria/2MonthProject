@@ -6,18 +6,40 @@ Constitution VII: All 23 features from manifest must be computed or raise Featur
 
 import logging
 from datetime import date, timedelta
+from functools import lru_cache
 from pathlib import Path
 
 import polars as pl
 import yaml
 
+from app.evidence.ncci_engine import NCCIEngine
+
 logger = logging.getLogger(__name__)
 
 MANIFEST_PATH = Path(__file__).parent.parent.parent.parent / "src" / "features" / "manifest.yml"
 
+# Deterministic ordinal encoding for CMS Place-of-Service codes. Values are fixed so the
+# trained model sees the same encoding at inference time across processes (Python's built-in
+# hash() is randomized per interpreter and must not be used for persisted ML features).
+# Codes sourced from CMS Place of Service code set. Unknown codes map to 0.
+PLACE_OF_SERVICE_ENCODING: dict[str, int] = {
+    "01": 1, "02": 2, "03": 3, "04": 4, "05": 5, "06": 6, "07": 7, "08": 8, "09": 9,
+    "11": 10, "12": 11, "13": 12, "14": 13, "15": 14, "16": 15, "17": 16, "18": 17,
+    "19": 18, "20": 19, "21": 20, "22": 21, "23": 22, "24": 23, "25": 24, "26": 25,
+    "31": 26, "32": 27, "33": 28, "34": 29, "41": 30, "42": 31, "49": 32, "50": 33,
+    "51": 34, "52": 35, "53": 36, "54": 37, "55": 38, "56": 39, "57": 40, "58": 41,
+    "60": 42, "61": 43, "62": 44, "65": 45, "71": 46, "72": 47, "81": 48, "99": 49,
+}
+
 
 class FeatureComputationError(Exception):
     """Raised when a required feature cannot be computed."""
+
+
+@lru_cache(maxsize=1)
+def _ncci_engine() -> NCCIEngine:
+    """Singleton NCCI engine — avoids reloading the CSV per feature call."""
+    return NCCIEngine()
 
 
 def _load_manifest() -> list[str]:
@@ -90,7 +112,6 @@ def compute_features(claims_df, target_claim_id: str) -> dict[str, float]:
     if isinstance(modifiers, str):
         modifiers = modifiers.strip("[]").replace("'", "").replace('"', '').split(", ") if modifiers else []
     modifiers = [m for m in modifiers if m.strip()]
-    features["num_modifiers"] = float(len(modifiers))
     features["modifier_count"] = float(len(modifiers))
     features["modifier_59_present"] = 1.0 if "59" in modifiers else 0.0
 
@@ -100,17 +121,18 @@ def compute_features(claims_df, target_claim_id: str) -> dict[str, float]:
     days_gap = (receipt_date - service_date).days if isinstance(receipt_date, date) and isinstance(service_date, date) else 0
     features["days_between_service_and_submission"] = float(days_gap)
 
-    pos = target_row["place_of_service"]
-    features["place_of_service_encoded"] = float(hash(str(pos)) % 100)
+    pos = str(target_row["place_of_service"]) if target_row["place_of_service"] is not None else ""
+    features["place_of_service_encoded"] = float(PLACE_OF_SERVICE_ENCODING.get(pos, 0))
 
     features["procedure_complexity_score"] = float(len(proc_codes)) * 1.5 + float(len(modifiers)) * 0.5
 
-    # Check for NCCI conflict in procedure codes
+    # Check for NCCI conflict in procedure codes.
+    # Uses a module-level cached engine (singleton) so the CSV isn't reloaded per call.
+    # Failures here propagate as FeatureComputationError rather than silently degrading to 0.
     has_conflict = 0.0
     if len(proc_codes) >= 2:
-        from app.evidence.ncci_engine import NCCIEngine
+        engine = _ncci_engine()
         try:
-            engine = NCCIEngine()
             for i in range(len(proc_codes)):
                 for j in range(i + 1, len(proc_codes)):
                     result = engine.lookup_ncci_conflict(proc_codes[i], proc_codes[j], service_date)
@@ -119,8 +141,8 @@ def compute_features(claims_df, target_claim_id: str) -> dict[str, float]:
                         break
                 if has_conflict:
                     break
-        except Exception:
-            pass
+        except (KeyError, ValueError, TypeError) as exc:
+            raise FeatureComputationError(f"NCCI lookup failed for {target_claim_id}: {exc}") from exc
     features["has_ncci_conflict"] = has_conflict
 
     # === Provider aggregate features (30-day lookback, strict <) ===
@@ -141,7 +163,7 @@ def compute_features(claims_df, target_claim_id: str) -> dict[str, float]:
         all_charges = lf.filter(pl.col("claim_receipt_date") < receipt_date).select("charge_amount").collect()
         overall_avg = float(all_charges["charge_amount"].mean()) if len(all_charges) > 0 else 1.0
         prov_avg = features["provider_avg_charge_30d"]
-        features["provider_specialty_charge_percentile"] = prov_avg / overall_avg if overall_avg > 0 else 0.0
+        features["provider_specialty_charge_ratio"] = prov_avg / overall_avg if overall_avg > 0 else 0.0
 
         unique_patients = provider_history["member_id"].n_unique()
         features["provider_unique_patients_30d"] = float(unique_patients)
@@ -164,7 +186,7 @@ def compute_features(claims_df, target_claim_id: str) -> dict[str, float]:
     else:
         features["provider_avg_charge_30d"] = 0.0
         features["provider_claim_volume_30d"] = 0.0
-        features["provider_specialty_charge_percentile"] = 0.0
+        features["provider_specialty_charge_ratio"] = 0.0
         features["provider_unique_patients_30d"] = 0.0
         features["provider_procedure_concentration"] = 0.0
         features["provider_peer_deviation"] = 0.0

@@ -429,7 +429,6 @@ claim_features:
   - charge_to_allowed_ratio
   - num_procedure_codes
   - num_diagnosis_codes
-  - num_modifiers
   - days_between_service_and_submission
   - place_of_service_encoded
   - procedure_complexity_score
@@ -440,7 +439,7 @@ claim_features:
 provider_features:
   - provider_avg_charge_30d
   - provider_claim_volume_30d
-  - provider_specialty_charge_percentile
+  - provider_specialty_charge_ratio
   - provider_unique_patients_30d
   - provider_procedure_concentration
   - provider_peer_deviation

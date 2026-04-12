@@ -88,9 +88,25 @@ class NCCIEngine:
             }
 
         row = matches.iloc[0]
+        edit_type = row.get("edit_type", "unbundling") or "unbundling"
         return {
             "conflict_exists": True,
-            "edit_type": row.get("edit_type", "unbundling"),
+            "edit_type": edit_type,
             "effective_date": str(row["effective_date"]) if pd.notna(row["effective_date"]) else None,
-            "rationale": f"CPT {sorted_pair[1]} is a component of {sorted_pair[0]} and cannot be billed separately.",
+            "rationale": _rationale_for(edit_type, sorted_pair),
         }
+
+
+def _rationale_for(edit_type: str, pair: tuple[str, str]) -> str:
+    """Compose a natural-language rationale appropriate to the NCCI edit type."""
+    a, b = pair
+    et = (edit_type or "").lower()
+    if et in {"unbundling", "component", "ptp"}:
+        return f"CPT {b} is a component of {a} and cannot be billed separately on the same date of service."
+    if et in {"bilateral"}:
+        return f"CPT pair {a}/{b} triggers an NCCI bilateral-procedure edit and cannot be reported together without an appropriate modifier."
+    if et in {"assistant-at-surgery", "assistant_at_surgery", "assistant"}:
+        return f"CPT pair {a}/{b} is not eligible for separate assistant-at-surgery reimbursement per NCCI policy."
+    if et in {"mutually-exclusive", "mutually_exclusive"}:
+        return f"CPT codes {a} and {b} are mutually exclusive under NCCI edits and cannot both be billed for the same encounter."
+    return f"CPT pair {a}/{b} triggers an active NCCI {edit_type} edit on this service date."

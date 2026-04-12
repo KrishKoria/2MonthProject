@@ -11,6 +11,13 @@ from app.evidence.rag_embeddings import get_collection
 logger = logging.getLogger(__name__)
 
 
+class RAGRetrievalError(RuntimeError):
+    """Raised when the RAG backend is unavailable or the query fails for infrastructure
+    reasons. The evidence node should mark the RAG source as `unavailable` on this error
+    rather than treating it as an empty (`insufficient_data`) result — the two outcomes
+    have different semantics under FR-006 / constitution VII."""
+
+
 def _build_where(filters: dict[str, Any] | None) -> dict[str, Any] | None:
     if not filters:
         return None
@@ -42,9 +49,12 @@ def retrieve(
             n_results=top_k,
             where=where,
         )
-    except Exception as exc:  # pragma: no cover
-        logger.warning("RAG query failed: %s", exc)
-        return []
+    except Exception as exc:
+        # Infrastructure failure (Chroma unavailable, embedding model error, etc.) — this
+        # is NOT the same as "no policy matched". Surface it so the evidence node can
+        # record the source as unavailable and (if all sources fail) halt for manual review.
+        logger.error("RAG query failed: %s", exc, exc_info=True)
+        raise RAGRetrievalError(str(exc)) from exc
 
     docs = (result.get("documents") or [[]])[0]
     metas = (result.get("metadatas") or [[]])[0]

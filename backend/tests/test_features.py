@@ -114,3 +114,18 @@ def test_no_future_leakage():
         f"member_avg_charge_90d should be 150.0, got {features['member_avg_charge_90d']}. "
         "Future or same-day claims leaked!"
     )
+
+
+def test_place_of_service_encoding_is_deterministic():
+    """POS encoding must be stable across processes. Python's built-in hash() is
+    randomized per interpreter (PYTHONHASHSEED) and must never be used for persisted
+    ML features — see constitution VI (output correctness / reproducibility)."""
+    from app.ml.features import PLACE_OF_SERVICE_ENCODING
+
+    # Known CMS POS codes have fixed ordinal encodings; unknown codes map to 0.
+    assert PLACE_OF_SERVICE_ENCODING["11"] == 10  # Office
+    assert PLACE_OF_SERVICE_ENCODING["21"] == 20  # Inpatient Hospital
+    assert PLACE_OF_SERVICE_ENCODING["22"] == 21  # On-Campus Outpatient
+    # Encoding table must not contain collisions (beyond the unknown-sentinel 0).
+    values = list(PLACE_OF_SERVICE_ENCODING.values())
+    assert len(values) == len(set(values)), "POS encoding has duplicate values"

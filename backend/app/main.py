@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 
 import logging
+import os
 import time
 
 from fastapi import FastAPI, Request
@@ -22,25 +23,26 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS: credentialed cross-origin requests cannot use wildcard origins (browsers reject
+# the combination). Configure an explicit origin list from CORS_ALLOW_ORIGINS env var.
+_cors_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000")
+CORS_ALLOW_ORIGINS = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Processing-Time-Ms"],
 )
 
 
 @app.middleware("http")
-async def inject_state_and_time(request: Request, call_next):
-    """Inject data_store into request.state and track processing time."""
+async def track_processing_time(request: Request, call_next):
+    """Track request processing time. data_store is attached to request.state
+    automatically by Starlette from the lifespan-yielded state dict."""
     start = time.perf_counter()
-    # Inject data_store from lifespan state
-    if hasattr(request.app, "state") and hasattr(request.app.state, "_state"):
-        lifespan_state = request.app.state._state
-        if "data_store" in lifespan_state:
-            request.state.data_store = lifespan_state["data_store"]
     response = await call_next(request)
     elapsed_ms = (time.perf_counter() - start) * 1000
     response.headers["X-Processing-Time-Ms"] = f"{elapsed_ms:.1f}"

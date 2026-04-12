@@ -20,11 +20,7 @@
 - [x] T001 Create backend project structure with pyproject.toml, all package directories, and `__init__.py` files per plan.md layout in `backend/`
 - [x] T002 [P] Create data directory tree: `data/raw/`, `data/processed/`, `data/features/`, `data/scores/`, `data/ncci/`, `data/policy_docs/`, `data/chroma/`
 - [x] T003 [P] Create backend environment config class and `.env.example` in `backend/app/config.py` and `backend/.env.example` (OPENAI_API_KEY, DATA_DIR, CHROMA_DIR, LLM_MODEL, RISK_THRESHOLD, LOG_LEVEL)
-- [x] T004 Create feature manifest at `src/features/manifest.yml` with all 23 features: 13 claim features, 6 provider features, 4 member features per data-model.md
-- [x] T001 Create backend project structure with pyproject.toml, all package directories, and `__init__.py` files per plan.md layout in `backend/`
-- [x] T002 [P] Create data directory tree: `data/raw/`, `data/processed/`, `data/features/`, `data/scores/`, `data/ncci/`, `data/policy_docs/`, `data/chroma/`
-- [x] T003 [P] Create backend environment config class and `.env.example` in `backend/app/config.py` and `backend/.env.example` (OPENAI_API_KEY, DATA_DIR, CHROMA_DIR, LLM_MODEL, RISK_THRESHOLD, LOG_LEVEL)
-- [x] T004 Create feature manifest at `src/features/manifest.yml` with all 23 features: 13 claim features, 6 provider features, 4 member features per data-model.md
+- [x] T004 Create feature manifest at `src/features/manifest.yml` with all 22 features: 12 claim features, 6 provider features, 4 member features per data-model.md
 
 **Checkpoint**: Project skeleton exists; `backend/` and `data/` directories are ready; `src/features/manifest.yml` is in place.
 
@@ -55,7 +51,7 @@
 ### ML Pipeline (Feature Engineering + Model Training + Scoring)
 
 - [x] T013 Write `test_no_future_leakage()` in `backend/tests/test_features.py` using `claim_receipt_date` strict `<` inequality — **run `pytest tests/test_features.py::test_no_future_leakage` and confirm it FAILS before writing T014** (constitution II)
-- [x] T014 Implement point-in-time feature engineering in `backend/app/ml/features.py` using Polars lazy evaluation: all 23 features from manifest, per-claim lookback windows anchored to `claim_receipt_date`, never `service_date`; raises `FeatureComputationError` on missing features
+- [x] T014 Implement point-in-time feature engineering in `backend/app/ml/features.py` using Polars lazy evaluation: all 22 features from manifest, per-claim lookback windows anchored to `claim_receipt_date`, never `service_date`; raises `FeatureComputationError` on missing features
 - [x] T015 [P] Implement deterministic rules baseline (`ncci_conflict`, `charge_outlier`, `duplicate_match` flags) in `backend/app/ml/rules_baseline.py`
 - [x] T016 Implement XGBoost model training with grouped temporal split (70/15/15 by `claim_receipt_date`, no provider in both train+test) and precision gate (≥ 0.75 at operating threshold) in `backend/app/ml/model.py`
 - [x] T017 [P] Implement SHAP TreeExplainer wrapper with invariant check (`abs(sum(shap_values) - (pred - base_value)) < 1e-5`) in `backend/app/ml/explainer.py`
@@ -69,7 +65,6 @@
 - [x] T022 [P] Implement CMS policy document parser and chunker (~500 tokens, 50-token overlap) in `backend/app/evidence/rag_ingest.py`
 - [x] T023 [P] Implement ChromaDB embedding and single-collection indexing (`cms_policy`, `text-embedding-3-small`, metadata: source/chapter/section/topic) in `backend/app/evidence/rag_embeddings.py`
 - [x] T024 Implement semantic RAG retriever with metadata-filtered search in `backend/app/evidence/rag_retriever.py`
-- [x] T025 Create evidence setup script (download policy docs, ingest RAG corpus, load NCCI CSV) in `backend/scripts/setup_evidence.py`; add validation step: after ingestion, assert ChromaDB collection `cms_policy` has ≥ 1000 documents and NCCI CSV loaded ≥ 1 edit row before script exits
 - [x] T025 Create evidence setup script (download policy docs, ingest RAG corpus, load NCCI CSV) in `backend/scripts/setup_evidence.py`; add validation step: after ingestion, assert ChromaDB collection `cms_policy` has ≥ 1000 documents and NCCI CSV loaded ≥ 1 edit row before script exits
 
 ### SSE & Shared Frontend Infrastructure
@@ -96,7 +91,6 @@
 - [ ] T032 [P] [US1] Create KPI summary cards component (total flagged, high-risk count, investigation rate) in `frontend/src/components/dashboard/KpiCards.tsx`
 - [ ] T033 [P] [US1] Create risk distribution bar chart (high/medium/low counts) using Recharts in `frontend/src/components/charts/RiskDistributionChart.tsx`
 - [ ] T034 [P] [US1] Create anomaly type distribution display and ablation summary card (rules-only vs ML vs combined) in `frontend/src/components/dashboard/AblationCard.tsx`
-- [ ] T035 [P] [US1] Create sortable/filterable claims table in `frontend/src/components/claims/ClaimsTable.tsx`: display columns (claim_id, member_id, provider_id, service_date, risk band indicator, anomaly type label, charge amount, status badge); filter controls include risk_band select, anomaly_type select, provider_id text input, date_from/date_to date pickers — all wired to GET /api/claims query params
 - [ ] T035 [P] [US1] Create sortable/filterable claims table in `frontend/src/components/claims/ClaimsTable.tsx`: display columns (claim_id, member_id, provider_id, service_date, risk band indicator, anomaly type label, charge amount, status badge); filter controls include risk_band select, anomaly_type select, provider_id text input, date_from/date_to date pickers — all wired to GET /api/claims query params
 - [ ] T036 [US1] Implement dashboard page composing KPI cards, risk distribution chart, and ablation card with `GET /api/analytics/overview` data in `frontend/src/app/page.tsx`
 - [ ] T037 [US1] Implement claims explorer page with filterable/sortable table and empty-state handling in `frontend/src/app/claims/page.tsx`
@@ -132,10 +126,7 @@
 - [ ] T054 [P] [US2] Create streaming rationale display with progressive text render, confidence level, recommended action, and "Manual Review Required" halt state in `frontend/src/components/investigation/RationaleStream.tsx`
 - [ ] T055 [US2] Implement claim detail page in `frontend/src/app/claims/[id]/page.tsx`: display all claim fields (claim_id, member_id, provider_id, service_date, claim_receipt_date, procedure_codes, diagnosis_codes, modifiers, charge_amount, allowed_amount, paid_amount, place_of_service, claim_status, anomaly_type); render risk panel; show full anomaly_flags dict from TriageResult with detected/not_applicable/insufficient_data badges for all 3 types (not only the primary); when `investigation === null` show "Investigate" button triggering SSE stream; when `investigation !== null` show the stored result (rationale panel, evidence cards) alongside a "Re-investigate" button that triggers a new SSE stream and replaces the previous result; sequential rendering of triage → evidence → rationale; error/halt handling
 - [ ] T056a [US2] Implement investigation persistence write path in `backend/app/data/loader.py`: add `save_investigation(investigation: Investigation)` that serializes the in-memory investigations dict to `data/scores/investigations.parquet`; call it from the investigation SSE endpoint (T046) on `complete`/`halt`/`error` events; add assertion in `backend/tests/test_api.py` that an investigation survives a simulated restart (write → reload → verify result intact)
-- [ ] T055 [US2] Implement claim detail page in `frontend/src/app/claims/[id]/page.tsx`: display all claim fields (claim_id, member_id, provider_id, service_date, claim_receipt_date, procedure_codes, diagnosis_codes, modifiers, charge_amount, allowed_amount, paid_amount, place_of_service, claim_status, anomaly_type); render risk panel; show full anomaly_flags dict from TriageResult with detected/not_applicable/insufficient_data badges for all 3 types (not only the primary); when `investigation === null` show "Investigate" button triggering SSE stream; when `investigation !== null` show the stored result (rationale panel, evidence cards) alongside a "Re-investigate" button that triggers a new SSE stream and replaces the previous result; sequential rendering of triage → evidence → rationale; error/halt handling
-- [ ] T056a [US2] Implement investigation persistence write path in `backend/app/data/loader.py`: add `save_investigation(investigation: Investigation)` that serializes the in-memory investigations dict to `data/scores/investigations.parquet`; call it from the investigation SSE endpoint (T046) on `complete`/`halt`/`error` events; add assertion in `backend/tests/test_api.py` that an investigation survives a simulated restart (write → reload → verify result intact)
 
-**Checkpoint**: Full investigation pipeline functional. SSE streaming works end-to-end. Empty-evidence halt renders correctly. Error events display without broken UI. **Investigation results persist across restarts (FR-011) — this checkpoint must not be signed off until T056a is complete.**
 **Checkpoint**: Full investigation pipeline functional. SSE streaming works end-to-end. Empty-evidence halt renders correctly. Error events display without broken UI. **Investigation results persist across restarts (FR-011) — this checkpoint must not be signed off until T056a is complete.**
 
 ---
@@ -148,7 +139,6 @@
 
 ### Implementation for User Story 3
 
-- [ ] T056 [US3] Implement `PATCH /api/claims/{claim_id}/investigation` route accepting `{decision, notes?}`, validating state machine transition (`pending_review` → accepted/rejected/escalated), updating claim status and investigation in-memory store, and calling `save_investigation()` (T056a) on decision write in `backend/app/api/routes/investigation.py`
 - [ ] T056 [US3] Implement `PATCH /api/claims/{claim_id}/investigation` route accepting `{decision, notes?}`, validating state machine transition (`pending_review` → accepted/rejected/escalated), updating claim status and investigation in-memory store, and calling `save_investigation()` (T056a) on decision write in `backend/app/api/routes/investigation.py`
 - [ ] T057 [US3] Implement claim status transition enforcement in `backend/app/data/loader.py`: validate allowed transitions per state machine, raise domain error on invalid transitions
 - [ ] T058 [P] [US3] Create investigator feedback form component with Accept/Reject/Escalate buttons, optional notes textarea, and submit handler in `frontend/src/components/investigation/FeedbackForm.tsx`
@@ -194,8 +184,6 @@
 - [ ] T074 Run complete end-to-end quickstart validation per `quickstart.md` steps 1–8 and confirm all 4 verification scenarios pass
 - [ ] T075 [P] Implement and run rationale prompt schema validation: implement `backend/scripts/validate_prompt.py` that loads 50 representative flagged claims from Parquet, runs the rationale node (real LLM, real ChromaDB), and for each output asserts `RationaleResult` Pydantic schema validates, `policy_citations` is non-empty, all 3 `anomaly_flags_addressed` keys are present, and `recommended_action` is non-null; gate: ≥90% of outputs must pass all assertions before T044 is considered shippable (constitution R-007, plan.md)
 - [ ] T075a [P] Evaluate rationale quality against SC-003: first create `specs/001-claims-investigation-assistant/rubric.md` defining the evaluation rubric — "useful" (correct anomaly type, ≥1 valid policy citation, recommended action is actionable), "partially useful" (correct anomaly type, weak/absent citations), "not useful" (wrong anomaly type or hallucinated citations); then apply the rubric to all 50-claim outputs from T075 and record results in `data/scores/rationale_eval_results.json`; gate: ≥85% rated "useful" before Phase 7 checkpoint is signed off (spec.md SC-003)
-- [ ] T075 [P] Implement and run rationale prompt schema validation: implement `backend/scripts/validate_prompt.py` that loads 50 representative flagged claims from Parquet, runs the rationale node (real LLM, real ChromaDB), and for each output asserts `RationaleResult` Pydantic schema validates, `policy_citations` is non-empty, all 3 `anomaly_flags_addressed` keys are present, and `recommended_action` is non-null; gate: ≥90% of outputs must pass all assertions before T044 is considered shippable (constitution R-007, plan.md)
-- [ ] T075a [P] Evaluate rationale quality against SC-003: first create `specs/001-claims-investigation-assistant/rubric.md` defining the evaluation rubric — "useful" (correct anomaly type, ≥1 valid policy citation, recommended action is actionable), "partially useful" (correct anomaly type, weak/absent citations), "not useful" (wrong anomaly type or hallucinated citations); then apply the rubric to all 50-claim outputs from T075 and record results in `data/scores/rationale_eval_results.json`; gate: ≥85% rated "useful" before Phase 7 checkpoint is signed off (spec.md SC-003)
 
 ---
 
@@ -214,9 +202,6 @@
   - US3 depends on US2 (investigation must exist before feedback can be submitted)
   - US4 is independent of US2/US3 — shares only the analytics route from US1
 - **Polish (Phase 7)**: After all desired user stories are complete
-  - T075 depends on T043 (prompt) and T044 (rationale node) being complete — must run before Phase 7 checkpoint
-  - T075a depends on T075 (needs the 50-claim output) — can be done immediately after T075
-  - T056a (persistence write path) must be complete before T072 (API tests assert restart survival)
   - T075 depends on T043 (prompt) and T044 (rationale node) being complete — must run before Phase 7 checkpoint
   - T075a depends on T075 (needs the 50-claim output) — can be done immediately after T075
   - T056a (persistence write path) must be complete before T072 (API tests assert restart survival)
