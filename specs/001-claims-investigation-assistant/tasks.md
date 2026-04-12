@@ -85,9 +85,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T029 [US1] Implement `GET /api/claims` route handler with pagination (`page`, `page_size`), filtering (`status`, `risk_band`, `anomaly_type`, `provider_id`, `date_from`, `date_to`), and sorting (`sort_by`, `sort_dir`) in `backend/app/api/routes/claims.py`
-- [ ] T030 [US1] Implement `GET /api/analytics/overview` route returning total claims, flagged count, high-risk count, anomaly distribution, rules_baseline_flagged, ml_only_flagged, combined_flagged in `backend/app/api/routes/analytics.py`
-- [ ] T031 [US1] Register claims and analytics routers on `/api/claims` and `/api/analytics` in `backend/app/main.py`
+- [x] T029 [US1] Implement `GET /api/claims` route handler with pagination (`page`, `page_size`), filtering (`status`, `risk_band`, `anomaly_type`, `provider_id`, `date_from`, `date_to`), and sorting (`sort_by`, `sort_dir`) in `backend/app/api/routes/claims.py`
+- [x] T030 [US1] Implement `GET /api/analytics/overview` route returning total claims, flagged count, high-risk count, anomaly distribution, rules_baseline_flagged, ml_only_flagged, combined_flagged in `backend/app/api/routes/analytics.py`
+- [x] T031 [US1] Register claims and analytics routers on `/api/claims` and `/api/analytics` in `backend/app/main.py`
 - [ ] T032 [P] [US1] Create KPI summary cards component (total flagged, high-risk count, investigation rate) in `frontend/src/components/dashboard/KpiCards.tsx`
 - [ ] T033 [P] [US1] Create risk distribution bar chart (high/medium/low counts) using Recharts in `frontend/src/components/charts/RiskDistributionChart.tsx`
 - [ ] T034 [P] [US1] Create anomaly type distribution display and ablation summary card (rules-only vs ML vs combined) in `frontend/src/components/dashboard/AblationCard.tsx`

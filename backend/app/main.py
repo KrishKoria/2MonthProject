@@ -8,6 +8,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.routes import analytics as analytics_routes
+from app.api.routes import claims as claims_routes
 from app.config import settings
 from app.data.loader import lifespan
 
@@ -72,6 +74,10 @@ async def global_error_handler(request: Request, exc: Exception):
             "metadata": {"data_source": "synthetic"},
         },
     )
+
+
+app.include_router(claims_routes.router)
+app.include_router(analytics_routes.router)
 
 
 @app.get("/api/health")
