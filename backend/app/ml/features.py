@@ -29,6 +29,7 @@ PLACE_OF_SERVICE_ENCODING: dict[str, int] = {
     "31": 26, "32": 27, "33": 28, "34": 29, "41": 30, "42": 31, "49": 32, "50": 33,
     "51": 34, "52": 35, "53": 36, "54": 37, "55": 38, "56": 39, "57": 40, "58": 41,
     "60": 42, "61": 43, "62": 44, "65": 45, "71": 46, "72": 47, "81": 48, "99": 49,
+    "10": 50, "27": 51,
 }
 
 
@@ -112,7 +113,7 @@ def compute_features(claims_df, target_claim_id: str) -> dict[str, float]:
     if isinstance(modifiers, str):
         modifiers = modifiers.strip("[]").replace("'", "").replace('"', '').split(", ") if modifiers else []
     modifiers = [m for m in modifiers if m.strip()]
-    features["modifier_count"] = float(len(modifiers))
+    features["num_modifiers"] = float(len(modifiers))
     features["modifier_59_present"] = 1.0 if "59" in modifiers else 0.0
 
     service_date = target_row["service_date"]
@@ -163,7 +164,7 @@ def compute_features(claims_df, target_claim_id: str) -> dict[str, float]:
         all_charges = lf.filter(pl.col("claim_receipt_date") < receipt_date).select("charge_amount").collect()
         overall_avg = float(all_charges["charge_amount"].mean()) if len(all_charges) > 0 else 1.0
         prov_avg = features["provider_avg_charge_30d"]
-        features["provider_specialty_charge_ratio"] = prov_avg / overall_avg if overall_avg > 0 else 0.0
+        features["provider_specialty_charge_percentile"] = prov_avg / overall_avg if overall_avg > 0 else 0.0
 
         unique_patients = provider_history["member_id"].n_unique()
         features["provider_unique_patients_30d"] = float(unique_patients)
@@ -186,7 +187,7 @@ def compute_features(claims_df, target_claim_id: str) -> dict[str, float]:
     else:
         features["provider_avg_charge_30d"] = 0.0
         features["provider_claim_volume_30d"] = 0.0
-        features["provider_specialty_charge_ratio"] = 0.0
+        features["provider_specialty_charge_percentile"] = 0.0
         features["provider_unique_patients_30d"] = 0.0
         features["provider_procedure_concentration"] = 0.0
         features["provider_peer_deviation"] = 0.0

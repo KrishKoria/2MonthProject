@@ -208,13 +208,13 @@ claim_features:
   - place_of_service_encoded
   - procedure_complexity_score
   - has_ncci_conflict
-  - modifier_count
+  - num_modifiers
   - modifier_59_present
 
 provider_features:
   - provider_avg_charge_30d
   - provider_claim_volume_30d
-  - provider_specialty_charge_ratio
+  - provider_specialty_charge_percentile
   - provider_unique_patients_30d
   - provider_procedure_concentration
   - provider_peer_deviation

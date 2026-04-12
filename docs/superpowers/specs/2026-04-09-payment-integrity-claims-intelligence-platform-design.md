@@ -286,7 +286,7 @@ All features computed **point-in-time** using strict lookback windows anchored t
 - `place_of_service_encoded`
 - `procedure_complexity_score` (derived from CPT/HCPCS hierarchy)
 - `has_ncci_conflict` (binary: does this claim contain a conflicting code pair in NCCI?)
-- `modifier_count`, `modifier_59_present` (modifier usage patterns)
+- `num_modifiers`, `modifier_59_present` (modifier usage patterns)
 
 **Provider-Level Features (point-in-time, joined to claims):**
 
