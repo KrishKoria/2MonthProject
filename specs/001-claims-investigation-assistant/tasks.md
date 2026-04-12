@@ -88,13 +88,13 @@
 - [x] T029 [US1] Implement `GET /api/claims` route handler with pagination (`page`, `page_size`), filtering (`status`, `risk_band`, `anomaly_type`, `provider_id`, `date_from`, `date_to`), and sorting (`sort_by`, `sort_dir`) in `backend/app/api/routes/claims.py`
 - [x] T030 [US1] Implement `GET /api/analytics/overview` route returning total claims, flagged count, high-risk count, anomaly distribution, rules_baseline_flagged, ml_only_flagged, combined_flagged in `backend/app/api/routes/analytics.py`
 - [x] T031 [US1] Register claims and analytics routers on `/api/claims` and `/api/analytics` in `backend/app/main.py`
-- [ ] T032 [P] [US1] Create KPI summary cards component (total flagged, high-risk count, investigation rate) in `frontend/src/components/dashboard/KpiCards.tsx`
-- [ ] T033 [P] [US1] Create risk distribution bar chart (high/medium/low counts) using Recharts in `frontend/src/components/charts/RiskDistributionChart.tsx`
-- [ ] T034 [P] [US1] Create anomaly type distribution display and ablation summary card (rules-only vs ML vs combined) in `frontend/src/components/dashboard/AblationCard.tsx`
-- [ ] T035 [P] [US1] Create sortable/filterable claims table in `frontend/src/components/claims/ClaimsTable.tsx`: display columns (claim_id, member_id, provider_id, service_date, risk band indicator, anomaly type label, charge amount, status badge); filter controls include risk_band select, anomaly_type select, provider_id text input, date_from/date_to date pickers — all wired to GET /api/claims query params
-- [ ] T036 [US1] Implement dashboard page composing KPI cards, risk distribution chart, and ablation card with `GET /api/analytics/overview` data in `frontend/src/app/page.tsx`
-- [ ] T037 [US1] Implement claims explorer page with filterable/sortable table and empty-state handling in `frontend/src/app/claims/page.tsx`
-- [ ] T038 [US1] Add navigation layout with links to Dashboard and Claims Explorer, and "Synthetic Data Demo" banner in `frontend/src/app/layout.tsx`
+- [x] T032 [P] [US1] KPI summary composed inline via shadcn `Card`/`Progress`/`Badge` in `frontend/src/app/page.tsx`
+- [x] T033 [P] [US1] Risk distribution composed inline via shadcn `Card` + semantic chart tokens in `frontend/src/app/page.tsx`
+- [x] T034 [P] [US1] Ablation + anomaly breakdown composed inline via shadcn `Card`/`Badge`/`Separator` in `frontend/src/app/page.tsx`
+- [x] T035 [P] [US1] Filterable/sortable claims table composed inline in `frontend/src/app/claims/page.tsx` using shadcn `Table`, `Select`, `ToggleGroup`, `Field`, `InputGroup`, `Empty`, `Skeleton`
+- [x] T036 [US1] Dashboard page at `frontend/src/app/page.tsx` — editorial design with Instrument Serif display + Geist body; all shadcn primitives
+- [x] T037 [US1] Claims explorer page at `frontend/src/app/claims/page.tsx` with filters, sort, pagination, empty state
+- [x] T038 [US1] Layout at `frontend/src/app/layout.tsx` with synthetic-data banner, Sentinel nav, shadcn `TooltipProvider`/`Toaster`/`Separator`/`Badge`
 
 **Checkpoint**: User Story 1 fully functional. Dashboard and claims explorer work independently without any investigation functionality.
 
