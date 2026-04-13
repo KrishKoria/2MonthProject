@@ -14,8 +14,12 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { AblationTable } from "@/components/dashboard/AblationTable";
+import { ModelMetricsCard } from "@/components/dashboard/ModelMetricsCard";
+import { PerAnomalyRecallCard } from "@/components/dashboard/PerAnomalyRecallCard";
+import { PrecisionRecallChart } from "@/components/charts/PrecisionRecallChart";
 import { api } from "@/lib/api";
-import type { AnalyticsOverview, AnomalyType } from "@/lib/types";
+import type { AnalyticsOverview, AnomalyType, ModelPerformance } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -26,13 +30,21 @@ const ANOMALY_LABELS: Record<AnomalyType, string> = {
 };
 
 export default async function DashboardPage() {
-  let overview: AnalyticsOverview | null = null;
-  let error: string | null = null;
-  try {
-    overview = await api.analyticsOverview();
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load analytics";
-  }
+  const [overviewResult, performanceResult] = await Promise.allSettled([
+    api.analyticsOverview(),
+    api.modelPerformance(),
+  ]);
+
+  const overview: AnalyticsOverview | null =
+    overviewResult.status === "fulfilled" ? overviewResult.value : null;
+  const performance: ModelPerformance | null =
+    performanceResult.status === "fulfilled" ? performanceResult.value : null;
+  const error =
+    overviewResult.status === "rejected"
+      ? overviewResult.reason instanceof Error
+        ? overviewResult.reason.message
+        : "Failed to load analytics"
+      : null;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 pt-10 pb-16">
@@ -53,9 +65,50 @@ export default async function DashboardPage() {
             <AblationPanel overview={overview} />
           </div>
           <AnomalyBreakdown overview={overview} />
+          {performance ? <ModelPerformanceSection performance={performance} /> : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+function ModelPerformanceSection({ performance }: { performance: ModelPerformance }) {
+  return (
+    <section
+      aria-labelledby="model-performance-heading"
+      className="flex flex-col gap-6 pt-4"
+    >
+      <div className="flex flex-col gap-2">
+        <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          Evaluation · held-out split
+        </span>
+        <h2
+          id="model-performance-heading"
+          className="font-display text-4xl leading-[1.05] tracking-tight"
+        >
+          Model performance,{" "}
+          <em className="text-muted-foreground">stated plainly.</em>
+        </h2>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          All numbers below are computed on a synthetic Medicare Part B test set
+          with injected anomalies. They're here to show architecture credibility,
+          not to advertise a production system.
+        </p>
+      </div>
+
+      <ModelMetricsCard performance={performance} />
+
+      <div className="grid gap-5 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <PrecisionRecallChart curve={performance.precision_recall_curve} />
+        </div>
+        <div className="lg:col-span-2">
+          <AblationTable ablation={performance.ablation} />
+        </div>
+      </div>
+
+      <PerAnomalyRecallCard recall={performance.per_anomaly_recall} />
+    </section>
   );
 }
 

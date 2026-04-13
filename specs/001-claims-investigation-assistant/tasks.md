@@ -139,11 +139,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T056 [US3] Implement `PATCH /api/claims/{claim_id}/investigation` route accepting `{decision, notes?}`, validating state machine transition (`pending_review` → accepted/rejected/escalated), updating claim status and investigation in-memory store, and calling `save_investigation()` (T056a) on decision write in `backend/app/api/routes/investigation.py`
-- [ ] T057 [US3] Implement claim status transition enforcement in `backend/app/data/loader.py`: validate allowed transitions per state machine, raise domain error on invalid transitions
-- [ ] T058 [P] [US3] Create investigator feedback form component with Accept/Reject/Escalate buttons, optional notes textarea, and submit handler in `frontend/src/components/investigation/FeedbackForm.tsx`
-- [ ] T059 [US3] Integrate feedback form and AI-vs-human labeling into the claim detail page: show feedback form below rationale when investigation is complete and no decision recorded; show recorded decision with "Human Confirmed" label when decision exists in `frontend/src/app/claims/[id]/page.tsx`
-- [ ] T060 [US3] Update claims table status column to reflect post-decision states (accepted/rejected/escalated) with distinct status badge styles in `frontend/src/components/claims/ClaimsTable.tsx`
+- [x] T056 [US3] Implement `PATCH /api/claims/{claim_id}/investigation` route accepting `{decision, notes?}`, validating state machine transition (`pending_review` → accepted/rejected/escalated), updating claim status and investigation in-memory store, and calling `save_investigation()` (T056a) on decision write in `backend/app/api/routes/investigation.py`
+- [x] T057 [US3] Implement claim status transition enforcement in `backend/app/data/loader.py`: validate allowed transitions per state machine, raise domain error on invalid transitions
+- [x] T058 [P] [US3] Create investigator feedback form component with Accept/Reject/Escalate buttons, optional notes textarea, and submit handler in `frontend/src/components/investigation/FeedbackForm.tsx`
+- [x] T059 [US3] Integrate feedback form and AI-vs-human labeling into the claim detail page: show feedback form below rationale when investigation is complete and no decision recorded; show recorded decision with "Human Confirmed" label when decision exists in `frontend/src/app/claims/[id]/page.tsx`
+- [x] T060 [US3] Update claims table status column to reflect post-decision states (accepted/rejected/escalated) with distinct status badge styles in `frontend/src/components/claims/ClaimsTable.tsx`
 
 **Checkpoint**: Full investigation loop demonstrable — queue review → investigation → decision. All three investigator workflows (FR-003, FR-004, FR-007) functional.
 
@@ -157,13 +157,13 @@
 
 ### Implementation for User Story 4
 
-- [ ] T061 [US4] Implement `GET /api/analytics/model-performance` route loading metrics from `data/scores/model_metadata.json` (auc_roc, precision_at_k, precision_recall_curve, per_anomaly_recall, ablation comparison) with `data_framing: "synthetic"` in `backend/app/api/routes/analytics.py`
-- [ ] T062 [US4] Register model-performance route in `backend/app/main.py`
-- [ ] T063 [P] [US4] Create model metrics cards component (AUC-ROC, precision@K) with explicit "Synthetic Data" label in `frontend/src/components/dashboard/ModelMetricsCard.tsx`
-- [ ] T064 [P] [US4] Create precision-recall curve chart component using Recharts in `frontend/src/components/charts/PrecisionRecallChart.tsx`
-- [ ] T065 [P] [US4] Create ablation comparison table (rules-only / XGBoost-only / combined, each with precision/recall/F1) in `frontend/src/components/dashboard/AblationTable.tsx`
-- [ ] T065a [P] [US4] Create per-anomaly-type recall breakdown card in `frontend/src/components/dashboard/PerAnomalyRecallCard.tsx` displaying recall % for upcoding, NCCI violations, and duplicate billing separately
-- [ ] T066 [US4] Add model performance section (metrics cards + precision-recall chart + per-anomaly recall card + ablation table) to dashboard page in `frontend/src/app/page.tsx`
+- [x] T061 [US4] Implement `GET /api/analytics/model-performance` route loading metrics from `data/scores/model_metadata.json` (auc_roc, precision_at_k, precision_recall_curve, per_anomaly_recall, ablation comparison) with `data_framing: "synthetic"` in `backend/app/api/routes/analytics.py`
+- [x] T062 [US4] Register model-performance route in `backend/app/main.py`
+- [x] T063 [P] [US4] Create model metrics cards component (AUC-ROC, precision@K) with explicit "Synthetic Data" label in `frontend/src/components/dashboard/ModelMetricsCard.tsx`
+- [x] T064 [P] [US4] Create precision-recall curve chart component using Recharts in `frontend/src/components/charts/PrecisionRecallChart.tsx`
+- [x] T065 [P] [US4] Create ablation comparison table (rules-only / XGBoost-only / combined, each with precision/recall/F1) in `frontend/src/components/dashboard/AblationTable.tsx`
+- [x] T065a [P] [US4] Create per-anomaly-type recall breakdown card in `frontend/src/components/dashboard/PerAnomalyRecallCard.tsx` displaying recall % for upcoding, NCCI violations, and duplicate billing separately
+- [x] T066 [US4] Add model performance section (metrics cards + precision-recall chart + per-anomaly recall card + ablation table) to dashboard page in `frontend/src/app/page.tsx`
 
 **Checkpoint**: All four user stories functional and independently testable. Full end-to-end demo ready.
 

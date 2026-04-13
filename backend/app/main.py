@@ -1,7 +1,6 @@
 """FastAPI application entry point."""
 
 import logging
-import os
 import time
 
 from fastapi import FastAPI, Request
@@ -27,14 +26,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS: credentialed cross-origin requests cannot use wildcard origins (browsers reject
-# the combination). Configure an explicit origin list from CORS_ALLOW_ORIGINS env var.
-_cors_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000")
-CORS_ALLOW_ORIGINS = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ALLOW_ORIGINS,
+    allow_origins=settings.cors_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -88,3 +82,20 @@ app.include_router(ncci_routes.router)
 async def health():
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+def main() -> None:
+    """Run the FastAPI app with uvicorn when executed as a script."""
+    import uvicorn
+
+    target = "app.main:app" if settings.API_RELOAD else app
+    uvicorn.run(
+        target,
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=settings.API_RELOAD,
+    )
+
+
+if __name__ == "__main__":
+    main()
