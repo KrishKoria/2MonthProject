@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import analytics as analytics_routes
 from app.api.routes import claims as claims_routes
+from app.api.routes import investigation as investigation_routes
+from app.api.routes import ncci as ncci_routes
 from app.config import settings
 from app.data.loader import lifespan
 
@@ -78,6 +80,8 @@ async def global_error_handler(request: Request, exc: Exception):
 
 app.include_router(claims_routes.router)
 app.include_router(analytics_routes.router)
+app.include_router(investigation_routes.router)
+app.include_router(ncci_routes.router)
 
 
 @app.get("/api/health")
