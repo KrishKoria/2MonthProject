@@ -7,10 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-display);
-  --font-display: var(--font-display);
+  --font-sans: var(--font-app-sans);
+  --font-mono: var(--font-app-mono);
+  --font-heading: var(--font-app-display);
+  --font-display: var(--font-app-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,6 +50,9 @@
 }
 
 :root {
+  --font-app-sans: "Aptos", "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-app-mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-app-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --background: oklch(0.985 0.003 85);
   --foreground: oklch(0.18 0.01 60);
   --card: oklch(1 0 0);
@@ -130,7 +133,7 @@
     @apply font-sans;
   }
   .font-display {
-    font-family: var(--font-display), ui-serif, Georgia, "Times New Roman", serif;
+    font-family: var(--font-app-display), ui-serif, Georgia, "Times New Roman", serif;
     font-feature-settings: "liga", "dlig";
   }
 }

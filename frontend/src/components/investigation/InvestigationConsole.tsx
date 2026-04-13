@@ -16,10 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
+import { inferInvestigationStage, type InvestigationStage } from "@/lib/investigation";
 import { streamInvestigation } from "@/lib/sse";
+import { cn } from "@/lib/utils";
 import type {
   AnomalyFlagValue,
   EvidenceEnvelope,
+  HumanDecision,
   Investigation,
   RationaleResult,
   SourceRecord,
@@ -27,16 +30,15 @@ import type {
 } from "@/lib/types";
 
 import { EvidenceCards } from "./EvidenceCards";
+import { HumanReviewDesk } from "./HumanReviewDesk";
 import { RationaleStream } from "./RationaleStream";
-
-type Stage = "idle" | "triage" | "evidence" | "rationale" | "done" | "halted" | "error";
 
 interface InvestigationConsoleProps {
   claimId: string;
   initial: Investigation | null;
 }
 
-const STAGES: Array<{ key: Exclude<Stage, "idle" | "error" | "halted">; label: string }> = [
+const STAGES: Array<{ key: Exclude<InvestigationStage, "idle" | "error" | "halted">; label: string }> = [
   { key: "triage", label: "Triage" },
   { key: "evidence", label: "Evidence" },
   { key: "rationale", label: "Rationale" },
@@ -59,8 +61,14 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
   const [triage, setTriage] = useState<TriageResult | null>(initial?.triage ?? null);
   const [evidence, setEvidence] = useState<EvidenceEnvelope | null>(initial?.evidence ?? null);
   const [rationale, setRationale] = useState<RationaleResult | null>(initial?.rationale ?? null);
+  const [humanDecision, setHumanDecision] = useState<HumanDecision | null>(
+    initial?.human_decision ?? null,
+  );
   const [streamText, setStreamText] = useState("");
-  const [stage, setStage] = useState<Stage>(() => inferStage(initial));
+  const [stage, setStage] = useState<InvestigationStage>(() =>
+    inferInvestigationStage(initial),
+  );
+  const [isStreaming, setIsStreaming] = useState(false);
   const [halted, setHalted] = useState<{ reason: string; sources: SourceRecord[] } | null>(
     initial?.investigation_status === "manual_review_required"
       ? {
@@ -77,7 +85,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
   const startedRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (stage === "triage" || stage === "evidence" || stage === "rationale") {
+    if (isStreaming) {
       const id = window.setInterval(() => {
         if (startedRef.current != null) {
           setElapsedMs(performance.now() - startedRef.current);
@@ -85,12 +93,34 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
       }, 100);
       return () => window.clearInterval(id);
     }
-  }, [stage]);
+  }, [isStreaming]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  const running = stage === "triage" || stage === "evidence" || stage === "rationale";
-  const hasResults = triage || evidence || rationale || halted || error;
+  const inProgress = stage === "triage" || stage === "evidence" || stage === "rationale";
+  const hasResults =
+    stage !== "idle" || triage || evidence || rationale || halted || humanDecision || error;
+
+  function applyInvestigationSnapshot(investigation: Investigation) {
+    setTriage(investigation.triage);
+    setEvidence(investigation.evidence);
+    setRationale(investigation.rationale);
+    setHumanDecision(investigation.human_decision);
+    setStage(inferInvestigationStage(investigation));
+    setHalted(
+      investigation.investigation_status === "manual_review_required"
+        ? {
+            reason: "manual_review_required",
+            sources: investigation.evidence?.sources_consulted ?? [],
+          }
+        : null,
+    );
+    setError(
+      investigation.investigation_status === "error"
+        ? "Investigation failed while writing the final record."
+        : null,
+    );
+  }
 
   function reset() {
     setTriage(null);
@@ -106,6 +136,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
     abortRef.current?.abort();
     reset();
     setStage("triage");
+    setIsStreaming(true);
     startedRef.current = performance.now();
 
     abortRef.current = streamInvestigation(claimId, {
@@ -121,9 +152,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
         setStreamText((prev) => prev + e.data.text);
       },
       onComplete: (e) => {
-        const inv = e.data;
-        if (inv.rationale) setRationale(inv.rationale);
-        setStage("done");
+        applyInvestigationSnapshot(e.data);
         toast.success("Investigation complete", {
           description: "Rationale sealed and persisted.",
         });
@@ -149,12 +178,16 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
         setStage("error");
         toast.error("Connection lost", { description: message });
       },
+      onClose: () => {
+        setIsStreaming(false);
+        startedRef.current = null;
+      },
     });
   }
 
   function cancel() {
     abortRef.current?.abort();
-    setStage("idle");
+    setIsStreaming(false);
     startedRef.current = null;
     toast.message("Investigation cancelled");
   }
@@ -163,16 +196,17 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
     <div className="flex flex-col gap-6">
       <Header
         stage={stage}
-        running={running}
+        isStreaming={isStreaming}
+        inProgress={inProgress}
         hasResults={!!hasResults}
         elapsedMs={elapsedMs}
         onStart={start}
         onCancel={cancel}
       />
 
-      <Timeline stage={stage} />
+      <Timeline stage={stage} isStreaming={isStreaming} />
 
-      {!hasResults && !running ? (
+      {!hasResults ? (
         <Empty className="border border-dashed border-border/70 rounded-lg">
           <EmptyHeader>
             <EmptyTitle className="font-display italic text-2xl">
@@ -234,20 +268,42 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
           </motion.section>
         ) : null}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {(rationale || halted || humanDecision) && !error ? (
+          <motion.section
+            key="review"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Separator className="mb-6" />
+            <SectionEyebrow>Human review</SectionEyebrow>
+            <HumanReviewDesk
+              claimId={claimId}
+              humanDecision={humanDecision}
+              disabled={isStreaming}
+              onDecisionSaved={applyInvestigationSnapshot}
+            />
+          </motion.section>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
 
 function Header({
   stage,
-  running,
+  isStreaming,
+  inProgress,
   hasResults,
   elapsedMs,
   onStart,
   onCancel,
 }: {
-  stage: Stage;
-  running: boolean;
+  stage: InvestigationStage;
+  isStreaming: boolean;
+  inProgress: boolean;
   hasResults: boolean;
   elapsedMs: number;
   onStart: () => void;
@@ -260,8 +316,10 @@ function Header({
       ? "Manual review"
       : stage === "error"
       ? "Error"
-      : running
+      : isStreaming
       ? "Investigating"
+      : inProgress
+      ? "In progress"
       : hasResults
       ? "On file"
       : "Not started";
@@ -273,23 +331,25 @@ function Header({
           variant="outline"
           className="gap-1.5 text-[10px] uppercase tracking-[0.14em]"
         >
-          {running ? (
+          {isStreaming ? (
             <Loader2 className="size-3 animate-spin" />
           ) : stage === "done" ? (
             <CheckCircle2 className="size-3" style={{ color: "var(--chart-3)" }} />
+          ) : inProgress ? (
+            <Sparkles className="size-3" style={{ color: "var(--chart-2)" }} />
           ) : (
             <CircleDashed className="size-3" />
           )}
           {label}
         </Badge>
-        {running ? (
+        {isStreaming ? (
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
             {(elapsedMs / 1000).toFixed(1)}s
           </span>
         ) : null}
       </div>
       <div className="flex items-center gap-2">
-        {running ? (
+        {isStreaming ? (
           <Button size="sm" variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
@@ -297,15 +357,15 @@ function Header({
         <Button
           size="sm"
           onClick={onStart}
-          disabled={running}
+          disabled={isStreaming}
           className="group"
         >
-          {hasResults && !running ? (
+          {hasResults && !isStreaming ? (
             <>
               <RotateCcw data-icon="inline-start" />
-              Re-investigate
+              Re-run investigation
             </>
-          ) : running ? (
+          ) : isStreaming ? (
             <>
               <Sparkles data-icon="inline-start" className="animate-soft-pulse" />
               Streaming…
@@ -322,7 +382,13 @@ function Header({
   );
 }
 
-function Timeline({ stage }: { stage: Stage }) {
+function Timeline({
+  stage,
+  isStreaming,
+}: {
+  stage: InvestigationStage;
+  isStreaming: boolean;
+}) {
   const stageIndex = useMemo(() => {
     if (stage === "idle") return -1;
     if (stage === "halted" || stage === "error") return 1; // through evidence
@@ -357,7 +423,8 @@ function Timeline({ stage }: { stage: Stage }) {
       />
       {STAGES.map((s, i) => {
         const active = i <= stageIndex;
-        const current = i === stageIndex && (stage === "triage" || stage === "evidence" || stage === "rationale");
+        const current =
+          i === stageIndex && (stage === "triage" || stage === "evidence" || stage === "rationale");
         return (
           <div key={s.key} className="relative flex flex-col items-center gap-2">
             <div
@@ -368,7 +435,12 @@ function Timeline({ stage }: { stage: Stage }) {
               }}
             >
               {current ? (
-                <span className="size-1.5 rounded-full bg-background animate-soft-pulse" />
+                <span
+                  className={cn(
+                    "size-1.5 rounded-full bg-background",
+                    isStreaming && "animate-soft-pulse",
+                  )}
+                />
               ) : active ? (
                 <CheckCircle2 className="size-3 text-background" />
               ) : (
@@ -449,18 +521,4 @@ function SectionEyebrow({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
-}
-
-function inferStage(inv: Investigation | null): Stage {
-  if (!inv) return "idle";
-  switch (inv.investigation_status) {
-    case "complete":
-      return "done";
-    case "manual_review_required":
-      return "halted";
-    case "error":
-      return "error";
-    default:
-      return "idle";
-  }
 }

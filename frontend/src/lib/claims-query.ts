@@ -34,6 +34,10 @@ const SORT_FIELDS = new Set<NonNullable<ClaimsQuery["sort_by"]>>([
   "claim_receipt_date",
   "charge_amount",
 ]);
+const SORT_DIRECTIONS = new Set<NonNullable<ClaimsQuery["sort_dir"]>>([
+  "asc",
+  "desc",
+]);
 
 function readFirst(value: SearchParamValue) {
   return Array.isArray(value) ? value[0] : value;
@@ -72,7 +76,7 @@ export function claimsQueryFromSearchParams(searchParams: SearchParamsInput): Cl
     parseChoice(readFirst(searchParams.sort_by), SORT_FIELDS) ??
     DEFAULT_CLAIMS_QUERY.sort_by;
   const sortDir =
-    parseChoice(readFirst(searchParams.sort_dir), new Set(["asc", "desc"])) ??
+    parseChoice(readFirst(searchParams.sort_dir), SORT_DIRECTIONS) ??
     DEFAULT_CLAIMS_QUERY.sort_dir;
   const providerId = readFirst(searchParams.provider_id)?.trim();
   const dateFrom = readFirst(searchParams.date_from);

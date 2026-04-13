@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sentinel Frontend
 
-## Getting Started
+Sentinel is a Medicare Part B claims investigation workbench built against a synthetic dataset. The frontend is responsible for turning backend scoring, evidence retrieval, and streamed AI rationale generation into a reviewable, human-governed workflow.
 
-First, run the development server:
+## Problem Statement
+
+Claims investigators need a queue that does more than rank risk. They need:
+
+- A portfolio view of population-level risk and anomaly mix
+- A claim queue that can be filtered, sorted, and shared via URL state
+- A dossier page that combines claim facts, model reasoning, evidence sources, and streamed rationale output
+- A human review surface that records the final payment decision after the machine-generated rationale is inspected
+
+The product is intentionally deterministic-first. Rules, NCCI checks, duplicate search, and provider context sit alongside ML scores and AI synthesis, but the final disposition still belongs to a reviewer.
+
+## Key Screens
+
+- `/` dashboard for analytics overview and queue entry points
+- `/claims` server-driven queue explorer with canonical search params
+- `/claims/[id]` investigation console with streamed rationale and reviewer decision capture
+
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- Tailwind CSS v4
+- shadcn/ui (`radix-nova`)
+- Bun for package management, scripts, and tests
+
+## Local Development
+
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Start the app:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+bun run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The frontend expects the backend API to be available at `http://localhost:8000` by default.
 
-## Learn More
+To point it somewhere else, set:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://your-api-host:8000
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Verification
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+bun test
+bun run lint
+bun run build
+```
 
-## Deploy on Vercel
+## Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The UI is built against synthetic data only. No real PHI should be used.
+- Fonts are local/system-based so the production build does not depend on external font downloads.
+- The queue page treats the URL as the source of truth for filtering and pagination.
