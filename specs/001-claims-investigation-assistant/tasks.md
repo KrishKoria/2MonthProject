@@ -108,24 +108,24 @@
 
 ### Implementation for User Story 2
 
-- [ ] T039 [US2] Define `InvestigationState` TypedDict and LangGraph graph skeleton with three node slots and edge routing in `backend/app/orchestrator/graph.py`
-- [ ] T040 [US2] Implement deterministic triage node: classify anomaly type from `rules_flags` + `xgboost_score`, set all 3 `anomaly_flags` (detected/not_applicable/insufficient_data), select evidence tools, set priority in `backend/app/orchestrator/triage.py`
-- [ ] T041 [US2] Define four evidence tool functions (`ncci_lookup`, `rag_retrieval`, `provider_history`, `duplicate_search`) as callable wrappers in `backend/app/orchestrator/tools.py`
-- [ ] T042 [US2] Implement deterministic evidence node: execute all selected tools, record all 4 sources in `sources_consulted`, check empty-evidence gate (all unavailable → `manual_review_required` halt) in `backend/app/orchestrator/evidence.py`
-- [ ] T043 [US2] Write rationale synthesis prompt with all evidence pre-assembled, JSON output schema, and instructions to address all 3 anomaly flags in `backend/app/orchestrator/prompts/rationale.md`
-- [ ] T044 [US2] Implement LLM rationale node: single `gpt-4o` call with streaming, Pydantic `RationaleResult` validation, SHAP invariant pre-check in `backend/app/orchestrator/rationale.py`
-- [ ] T045 [US2] Wire complete LangGraph graph (triage → evidence → rationale, halt edge from evidence when empty, error edge on exceptions) in `backend/app/orchestrator/graph.py`
-- [ ] T046 [US2] Implement `POST /api/claims/{claim_id}/investigate` SSE endpoint emitting `triage`, `evidence`, `rationale_chunk` (multiple), `complete`/`halt`/`error` events with required headers in `backend/app/api/routes/investigation.py`
-- [ ] T047 [US2] Implement `GET /api/claims/{claim_id}` returning full claim, risk score with SHAP values, and investigation (null if not yet run) in `backend/app/api/routes/claims.py`
-- [ ] T048 [US2] Implement `GET /api/claims/{claim_id}/investigation` (stored result) and `GET /api/claims/{claim_id}/investigation/status` (polling fallback) in `backend/app/api/routes/investigation.py`
-- [ ] T049 [US2] Implement `GET /api/ncci/{code_1}/{code_2}` endpoint with `service_date` query param in `backend/app/api/routes/ncci.py`
-- [ ] T050 [US2] Register investigation and NCCI routers in `backend/app/main.py`
+- [x] T039 [US2] Define `InvestigationState` TypedDict and LangGraph graph skeleton with three node slots and edge routing in `backend/app/orchestrator/graph.py`
+- [x] T040 [US2] Implement deterministic triage node: classify anomaly type from `rules_flags` + `xgboost_score`, set all 3 `anomaly_flags` (detected/not_applicable/insufficient_data), select evidence tools, set priority in `backend/app/orchestrator/triage.py`
+- [x] T041 [US2] Define four evidence tool functions (`ncci_lookup`, `rag_retrieval`, `provider_history`, `duplicate_search`) as callable wrappers in `backend/app/orchestrator/tools.py`
+- [x] T042 [US2] Implement deterministic evidence node: execute all selected tools, record all 4 sources in `sources_consulted`, check empty-evidence gate (all unavailable → `manual_review_required` halt) in `backend/app/orchestrator/evidence.py`
+- [x] T043 [US2] Write rationale synthesis prompt with all evidence pre-assembled, JSON output schema, and instructions to address all 3 anomaly flags in `backend/app/orchestrator/prompts/rationale.md`
+- [x] T044 [US2] Implement LLM rationale node: single `gpt-4o` call with streaming, Pydantic `RationaleResult` validation, SHAP invariant pre-check in `backend/app/orchestrator/rationale.py`
+- [x] T045 [US2] Wire complete LangGraph graph (triage → evidence → rationale, halt edge from evidence when empty, error edge on exceptions) in `backend/app/orchestrator/graph.py`
+- [x] T046 [US2] Implement `POST /api/claims/{claim_id}/investigate` SSE endpoint emitting `triage`, `evidence`, `rationale_chunk` (multiple), `complete`/`halt`/`error` events with required headers in `backend/app/api/routes/investigation.py`
+- [x] T047 [US2] Implement `GET /api/claims/{claim_id}` returning full claim, risk score with SHAP values, and investigation (null if not yet run) in `backend/app/api/routes/claims.py`
+- [x] T048 [US2] Implement `GET /api/claims/{claim_id}/investigation` (stored result) and `GET /api/claims/{claim_id}/investigation/status` (polling fallback) in `backend/app/api/routes/investigation.py`
+- [x] T049 [US2] Implement `GET /api/ncci/{code_1}/{code_2}` endpoint with `service_date` query param in `backend/app/api/routes/ncci.py`
+- [x] T050 [US2] Register investigation and NCCI routers in `backend/app/main.py`
 - [ ] T051 [US2] Implement typed `EventSource` SSE client wrapper with discriminated union event types (`TriageEvent`, `EvidenceEvent`, `RationaleChunkEvent`, `CompleteEvent`, `HaltEvent`, `ErrorEvent`) in `frontend/src/lib/sse.ts`
 - [ ] T052 [P] [US2] Create risk score panel with numeric gauge and SHAP waterfall chart (top contributing features) in `frontend/src/components/investigation/RiskPanel.tsx`
 - [ ] T053 [P] [US2] Create evidence cards displaying policy citations (source/chapter/section), NCCI findings, provider context, and sources-consulted status list in `frontend/src/components/investigation/EvidenceCards.tsx`
 - [ ] T054 [P] [US2] Create streaming rationale display with progressive text render, confidence level, recommended action, and "Manual Review Required" halt state in `frontend/src/components/investigation/RationaleStream.tsx`
 - [ ] T055 [US2] Implement claim detail page in `frontend/src/app/claims/[id]/page.tsx`: display all claim fields (claim_id, member_id, provider_id, service_date, claim_receipt_date, procedure_codes, diagnosis_codes, modifiers, charge_amount, allowed_amount, paid_amount, place_of_service, claim_status, anomaly_type); render risk panel; show full anomaly_flags dict from TriageResult with detected/not_applicable/insufficient_data badges for all 3 types (not only the primary); when `investigation === null` show "Investigate" button triggering SSE stream; when `investigation !== null` show the stored result (rationale panel, evidence cards) alongside a "Re-investigate" button that triggers a new SSE stream and replaces the previous result; sequential rendering of triage → evidence → rationale; error/halt handling
-- [ ] T056a [US2] Implement investigation persistence write path in `backend/app/data/loader.py`: add `save_investigation(investigation: Investigation)` that serializes the in-memory investigations dict to `data/scores/investigations.parquet`; call it from the investigation SSE endpoint (T046) on `complete`/`halt`/`error` events; add assertion in `backend/tests/test_api.py` that an investigation survives a simulated restart (write → reload → verify result intact)
+- [x] T056a [US2] Implement investigation persistence write path in `backend/app/data/loader.py`: add `save_investigation(investigation: Investigation)` that serializes the in-memory investigations dict to `data/scores/investigations.parquet`; call it from the investigation SSE endpoint (T046) on `complete`/`halt`/`error` events; add assertion in `backend/tests/test_api.py` that an investigation survives a simulated restart (write → reload → verify result intact)
 
 **Checkpoint**: Full investigation pipeline functional. SSE streaming works end-to-end. Empty-evidence halt renders correctly. Error events display without broken UI. **Investigation results persist across restarts (FR-011) — this checkpoint must not be signed off until T056a is complete.**
 

@@ -185,22 +185,26 @@ export interface EvidenceEvent {
 
 export interface RationaleChunkEvent {
   event: "rationale_chunk";
-  data: { delta: string; index: number };
+  data: { text: string };
 }
 
 export interface CompleteEvent {
   event: "complete";
-  data: { investigation: Investigation };
+  data: Investigation;
 }
 
 export interface HaltEvent {
   event: "halt";
-  data: { reason: "manual_review_required"; sources_consulted: SourceRecord[] };
+  data: {
+    investigation_status: "manual_review_required";
+    reason: string;
+    sources_consulted: SourceRecord[];
+  };
 }
 
 export interface ErrorEvent {
   event: "error";
-  data: { message: string };
+  data: { investigation_status?: "error"; message: string };
 }
 
 export type InvestigationEvent =

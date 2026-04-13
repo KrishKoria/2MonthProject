@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronRight, CircleAlert, FileSearch, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ChevronRight, CircleAlert, FileSearch } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,8 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { Separator } from "@/components/ui/separator";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { InvestigationConsole } from "@/components/investigation/InvestigationConsole";
+import { RiskPanel } from "@/components/investigation/RiskPanel";
 import { ApiError, api } from "@/lib/api";
 import type { ClaimDetail } from "@/lib/types";
 
@@ -46,27 +50,23 @@ export default async function ClaimDetailPage({ params }: PageProps) {
 
   if (!detail) return null;
   const { claim, risk_score, investigation } = detail;
-  const riskScoreNum = risk_score?.xgboost_score;
-  const riskBand = risk_score?.risk_band;
-  const riskColor =
+  const riskBand = risk_score?.risk_band ?? null;
+  const bandColor =
     riskBand === "high"
       ? "var(--chart-1)"
       : riskBand === "medium"
       ? "var(--chart-2)"
-      : "var(--chart-3)";
+      : riskBand === "low"
+      ? "var(--chart-3)"
+      : "var(--muted-foreground)";
 
-  const topShap = risk_score
-    ? Object.entries(risk_score.shap_values)
-        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-        .slice(0, 6)
-    : [];
-  const shapMax = Math.max(...topShap.map(([, v]) => Math.abs(v)), 0.0001);
+  const netDelta = claim.charge_amount - claim.paid_amount;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 pt-8 pb-16">
+    <div className="mx-auto w-full max-w-7xl px-6 pt-8 pb-20">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link href="/claims" className="inline-flex items-center gap-1 hover:text-foreground">
+        <Link href="/claims" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
           <ArrowLeft className="size-3" />
           All claims
         </Link>
@@ -98,7 +98,10 @@ export default async function ClaimDetailPage({ params }: PageProps) {
             {claim.claim_status.replace(/_/g, " ")}
           </Badge>
           {claim.anomaly_type ? (
-            <Badge className="text-[10px] uppercase tracking-wider" style={{ background: riskColor }}>
+            <Badge
+              className="text-[10px] uppercase tracking-wider text-background"
+              style={{ background: bandColor }}
+            >
               {claim.anomaly_type.replace(/_/g, " ")}
             </Badge>
           ) : null}
@@ -110,63 +113,14 @@ export default async function ClaimDetailPage({ params }: PageProps) {
         <Card className="animate-rise lg:col-span-1" style={{ animationDelay: "80ms" }}>
           <CardHeader>
             <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
-              Risk score
+              Risk read
             </CardDescription>
-            <CardTitle className="font-display text-6xl font-normal tabular-nums">
-              {riskScoreNum != null ? (
-                (riskScoreNum * 100).toFixed(0)
-              ) : (
-                <span className="text-muted-foreground">—</span>
-              )}
+            <CardTitle className="font-display text-3xl font-normal italic">
+              How the model sees it
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <span
-                className="inline-block size-2 rounded-full"
-                style={{ background: riskColor }}
-              />
-              <span className="text-sm capitalize">{riskBand ?? "unscored"} risk band</span>
-            </div>
-            <Separator />
-            <div>
-              <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                Top contributing features
-              </div>
-              {topShap.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No SHAP attribution available.</p>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {topShap.map(([feat, val]) => {
-                    const pct = (Math.abs(val) / shapMax) * 100;
-                    const positive = val >= 0;
-                    return (
-                      <li key={feat} className="flex flex-col gap-1">
-                        <div className="flex items-baseline justify-between text-xs">
-                          <span className="font-mono">{feat}</span>
-                          <span
-                            className="font-mono tabular-nums"
-                            style={{ color: positive ? "var(--chart-1)" : "var(--chart-3)" }}
-                          >
-                            {positive ? "+" : ""}
-                            {val.toFixed(3)}
-                          </span>
-                        </div>
-                        <div className="h-[3px] w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full"
-                            style={{
-                              width: `${pct}%`,
-                              background: positive ? "var(--chart-1)" : "var(--chart-3)",
-                            }}
-                          />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+          <CardContent>
+            <RiskPanel riskScore={risk_score} riskBand={riskBand} />
           </CardContent>
         </Card>
 
@@ -180,22 +134,32 @@ export default async function ClaimDetailPage({ params }: PageProps) {
               What the ledger shows
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-6">
+            {/* Money strip */}
+            <div className="grid grid-cols-3 gap-4 rounded-md border border-border/70 bg-background px-4 py-4">
+              <Money label="Charged" value={claim.charge_amount} />
+              <Money label="Allowed" value={claim.allowed_amount} muted />
+              <Money label="Paid" value={claim.paid_amount} muted />
+            </div>
+            {netDelta > 0 ? (
+              <div className="-mt-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                Unpaid delta{" "}
+                <span className="font-mono tabular-nums text-foreground">
+                  ${netDelta.toFixed(2)}
+                </span>
+              </div>
+            ) : null}
+
             <dl className="grid gap-x-8 gap-y-5 md:grid-cols-2">
               <Fact label="Member" value={claim.member_id} mono />
               <Fact label="Provider" value={claim.provider_id} mono />
-              <Fact label="Charge" value={`$${claim.charge_amount.toFixed(2)}`} />
-              <Fact label="Allowed" value={`$${claim.allowed_amount.toFixed(2)}`} />
-              <Fact label="Paid" value={`$${claim.paid_amount.toFixed(2)}`} />
               <Fact label="Place of service" value={claim.place_of_service} mono />
               <Fact
                 label="Procedure codes"
                 value={
                   <div className="flex flex-wrap gap-1">
                     {claim.procedure_codes.map((c) => (
-                      <Badge key={c} variant="outline" className="font-mono text-[10px]">
-                        {c}
-                      </Badge>
+                      <CodeChip key={c} code={c} kind="CPT/HCPCS" />
                     ))}
                   </div>
                 }
@@ -205,9 +169,7 @@ export default async function ClaimDetailPage({ params }: PageProps) {
                 value={
                   <div className="flex flex-wrap gap-1">
                     {claim.diagnosis_codes.map((c) => (
-                      <Badge key={c} variant="outline" className="font-mono text-[10px]">
-                        {c}
-                      </Badge>
+                      <CodeChip key={c} code={c} kind="ICD-10" />
                     ))}
                   </div>
                 }
@@ -232,87 +194,17 @@ export default async function ClaimDetailPage({ params }: PageProps) {
       </div>
 
       {/* Investigation */}
-      <Card className="mt-5 animate-rise" style={{ animationDelay: "220ms" }}>
+      <Card className="mt-5 animate-rise overflow-hidden" style={{ animationDelay: "220ms" }}>
         <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
-                Investigation
-              </CardDescription>
-              <CardTitle className="font-display text-3xl font-normal italic">
-                Evidence &amp; rationale
-              </CardTitle>
-            </div>
-            {investigation ? (
-              <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                {investigation.investigation_status.replace(/_/g, " ")}
-              </Badge>
-            ) : (
-              <Button size="sm" disabled>
-                <ShieldCheck data-icon="inline-start" />
-                Investigate
-              </Button>
-            )}
-          </div>
+          <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
+            Investigation
+          </CardDescription>
+          <CardTitle className="font-display text-3xl font-normal italic">
+            Evidence &amp; rationale
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          {investigation?.rationale ? (
-            <div className="flex flex-col gap-6">
-              <blockquote className="font-display text-2xl italic leading-snug text-foreground">
-                “{investigation.rationale.summary}”
-              </blockquote>
-              <Separator />
-              <div className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <h3 className="mb-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Recommended action
-                  </h3>
-                  <p className="text-sm">{investigation.rationale.recommended_action}</p>
-                </div>
-                <div>
-                  <h3 className="mb-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Confidence
-                  </h3>
-                  <p className="font-display text-3xl tabular-nums">
-                    {(investigation.rationale.confidence * 100).toFixed(0)}
-                    <span className="text-base text-muted-foreground">%</span>
-                  </p>
-                </div>
-              </div>
-              {investigation.rationale.policy_citations.length > 0 ? (
-                <div>
-                  <h3 className="mb-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Policy citations
-                  </h3>
-                  <ul className="flex flex-col gap-3">
-                    {investigation.rationale.policy_citations.map((c, i) => (
-                      <li
-                        key={i}
-                        className="border-l-2 border-accent bg-accent/10 py-2 pl-4 text-sm"
-                      >
-                        <p className="italic">{c.text}</p>
-                        <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {c.source}
-                          {c.chapter ? ` · ch. ${c.chapter}` : ""}
-                          {c.section ? ` · § ${c.section}` : ""}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <Empty>
-              <EmptyHeader>
-                <EmptyTitle>No investigation on file</EmptyTitle>
-                <EmptyDescription>
-                  The streaming investigation pipeline will appear here once initiated. Triage,
-                  evidence, and AI-synthesized rationale stream sequentially.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
+        <CardContent className="pb-8">
+          <InvestigationConsole claimId={claim.claim_id} initial={investigation} />
         </CardContent>
       </Card>
     </div>
@@ -333,5 +225,42 @@ function Fact({
       <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
       <dd className={`text-sm ${mono ? "font-mono" : ""}`}>{value}</dd>
     </div>
+  );
+}
+
+function Money({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </span>
+      <span
+        className={`font-display text-2xl tabular-nums ${muted ? "text-muted-foreground" : ""}`}
+      >
+        <span className="text-sm text-muted-foreground">$</span>
+        {value.toFixed(2)}
+      </span>
+    </div>
+  );
+}
+
+function CodeChip({ code, kind }: { code: string; kind: string }) {
+  return (
+    <HoverCard openDelay={150}>
+      <HoverCardTrigger asChild>
+        <span className="cursor-help rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] transition-colors hover:border-foreground/60">
+          {code}
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-56 text-xs">
+        <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          {kind}
+        </div>
+        <div className="mt-1 font-mono text-sm">{code}</div>
+        <p className="mt-2 text-muted-foreground italic">
+          Synthetic code — descriptor lookups disabled in v1.
+        </p>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
