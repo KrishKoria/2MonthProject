@@ -116,6 +116,80 @@ def test_no_future_leakage():
     )
 
 
+def _single_claim_df(**overrides):
+    base = {
+        "claim_id": "CLM-T-001",
+        "member_id": "MBR-T-001",
+        "provider_id": "PRV-T-001",
+        "service_date": date(2025, 6, 1),
+        "claim_receipt_date": date(2025, 6, 5),
+        "procedure_codes": ["99213"],
+        "diagnosis_codes": ["M17.11"],
+        "modifiers": [],
+        "charge_amount": 100.0,
+        "allowed_amount": 80.0,
+        "paid_amount": 60.0,
+        "place_of_service": "11",
+        "claim_status": "pending_review",
+        "anomaly_type": None,
+    }
+    base.update(overrides)
+    return pd.DataFrame([base])
+
+
+def test_compute_features_missing_claim_raises():
+    from app.ml.features import FeatureComputationError, compute_features
+
+    df = _single_claim_df()
+    with pytest.raises(FeatureComputationError):
+        compute_features(df, target_claim_id="NOPE")
+
+
+def test_compute_features_handles_string_encoded_list_fields():
+    from app.ml.features import compute_features
+
+    df = _single_claim_df(
+        procedure_codes="[99213, 99214]",
+        diagnosis_codes="[M17.11, I10]",
+        modifiers="[25, 59]",
+    )
+    feats = compute_features(df, target_claim_id="CLM-T-001")
+    assert feats["num_procedure_codes"] == 2.0
+    assert feats["num_diagnosis_codes"] == 2.0
+    assert feats["num_modifiers"] == 2.0
+    assert feats["modifier_59_present"] == 1.0
+    assert feats["days_between_service_and_submission"] == 4.0
+
+
+def test_compute_features_no_history_branches_default_to_zero():
+    from app.ml.features import compute_features
+
+    feats = compute_features(_single_claim_df(), target_claim_id="CLM-T-001")
+    # No prior provider or member claims → aggregate features should be 0.
+    assert feats["provider_avg_charge_30d"] == 0.0
+    assert feats["provider_claim_volume_30d"] == 0.0
+    assert feats["provider_peer_deviation"] == 0.0
+    assert feats["member_claim_frequency_90d"] == 0.0
+    assert feats["member_avg_charge_90d"] == 0.0
+
+
+def test_compute_features_batch_skips_bad_claims():
+    from app.ml.features import compute_features_batch
+
+    df = _single_claim_df()
+    results = compute_features_batch(df, target_claim_ids=["CLM-T-001", "NOPE"])
+    assert len(results) == 1
+    assert results[0]["claim_id"] == "CLM-T-001"
+
+
+def test_compute_features_batch_defaults_to_all_claim_ids():
+    from app.ml.features import compute_features_batch
+
+    df = _single_claim_df()
+    results = compute_features_batch(df)
+    assert [r["claim_id"] for r in results] == ["CLM-T-001"]
+
+
 def test_place_of_service_encoding_is_deterministic():
     """POS encoding must be stable across processes. Python's built-in hash() is
     randomized per interpreter (PYTHONHASHSEED) and must never be used for persisted

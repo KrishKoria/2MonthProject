@@ -332,9 +332,5 @@ US3 integrates after US2 completes (small surface area — one PATCH route + 2 f
 - **T056a is a hard gate for FR-011**: lives in Phase 4 alongside T046; Phase 4 checkpoint must not be signed off until T056a is complete; T072 API tests include restart-survival assertion
 - **T075 is a hard gate for production inference**: rationale prompt must pass ≥90% schema-correctness on 50 claims before T044 is considered shippable (R-007, plan.md)
 - **T075a is a hard gate for SC-003**: ≥85% "useful" rating on 50-claim sample required before Phase 7 checkpoint is signed off
-- Investigation in-memory store persists to `data/scores/investigations.parquet` on write via T056a (Phase 4) — T046 calls `save_investigation()` on complete/halt/error; T056 calls it on decision write
-- **T056a is a hard gate for FR-011**: lives in Phase 4 alongside T046; Phase 4 checkpoint must not be signed off until T056a is complete; T072 API tests include restart-survival assertion
-- **T075 is a hard gate for production inference**: rationale prompt must pass ≥90% schema-correctness on 50 claims before T044 is considered shippable (R-007, plan.md)
-- **T075a is a hard gate for SC-003**: ≥85% "useful" rating on 50-claim sample required before Phase 7 checkpoint is signed off
 - Exactly 3 frontend pages: `/`, `/claims`, `/claims/[id]` — no additions (constitution V)
 - All 4 SSE response headers required or browser-side failures occur silently (constitution V, sse-events.md)
