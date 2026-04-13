@@ -91,7 +91,7 @@ function ModelPerformanceSection({ performance }: { performance: ModelPerformanc
         </h2>
         <p className="max-w-2xl text-sm text-muted-foreground">
           All numbers below are computed on a synthetic Medicare Part B test set
-          with injected anomalies. They're here to show architecture credibility,
+          with injected anomalies. They&apos;re here to show architecture credibility,
           not to advertise a production system.
         </p>
       </div>

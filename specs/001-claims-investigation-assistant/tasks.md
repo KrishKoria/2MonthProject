@@ -173,17 +173,17 @@
 
 **Purpose**: Test coverage, validation, and constitution compliance checks across all stories.
 
-- [ ] T067 [P] Write NCCI engine fixture tests (≥1 fixture per category: unbundling, bilateral, assistant-at-surgery; test date range boundaries) in `backend/tests/test_ncci_engine.py`
-- [ ] T068 [P] Write RAG retriever tests (precision@5 ≥ 80% on ≥10 Medicare Part B questions) in `backend/tests/test_retriever.py`
-- [ ] T069 Write orchestrator integration tests: triage routing for all 3 anomaly types, halt condition when all evidence unavailable, error event on exception — LLM mocked in all tests in `backend/tests/test_orchestrator.py`
-- [ ] T070 [P] Write XGBoost model test: assert precision ≥ 0.75 at operating threshold on holdout set in `backend/tests/test_model.py`
-- [ ] T071 [P] Write rules baseline ablation tests in `backend/tests/test_rules_baseline.py`
-- [ ] T072 [P] Write API endpoint tests for all routes (claims list, claim detail, investigation CRUD, analytics, NCCI lookup) in `backend/tests/test_api.py`
-- [ ] T072a [P] Write pipeline latency test in `backend/tests/test_performance.py`: trigger investigation on a representative flagged claim, assert total elapsed time < 15s, assert triage SSE event arrives < 100ms after trigger, assert evidence event arrives < 2s after triage — LLM mocked to isolate pipeline latency from LLM variability
-- [ ] T073 Verify ≥80% line coverage on `backend/app/ml/`, `backend/app/orchestrator/`, `backend/app/api/` via `pytest --cov=app --cov-report=term-missing`
-- [ ] T074 Run complete end-to-end quickstart validation per `quickstart.md` steps 1–8 and confirm all 4 verification scenarios pass
-- [ ] T075 [P] Implement and run rationale prompt schema validation: implement `backend/scripts/validate_prompt.py` that loads 50 representative flagged claims from Parquet, runs the rationale node (real LLM, real ChromaDB), and for each output asserts `RationaleResult` Pydantic schema validates, `policy_citations` is non-empty, all 3 `anomaly_flags_addressed` keys are present, and `recommended_action` is non-null; gate: ≥90% of outputs must pass all assertions before T044 is considered shippable (constitution R-007, plan.md)
-- [ ] T075a [P] Evaluate rationale quality against SC-003: first create `specs/001-claims-investigation-assistant/rubric.md` defining the evaluation rubric — "useful" (correct anomaly type, ≥1 valid policy citation, recommended action is actionable), "partially useful" (correct anomaly type, weak/absent citations), "not useful" (wrong anomaly type or hallucinated citations); then apply the rubric to all 50-claim outputs from T075 and record results in `data/scores/rationale_eval_results.json`; gate: ≥85% rated "useful" before Phase 7 checkpoint is signed off (spec.md SC-003)
+- [x] T067 [P] Write NCCI engine fixture tests (≥1 fixture per category: unbundling, bilateral, assistant-at-surgery; test date range boundaries) in `backend/tests/test_ncci_engine.py`
+- [x] T068 [P] Write RAG retriever tests (precision@5 ≥ 80% on ≥10 Medicare Part B questions) in `backend/tests/test_retriever.py`
+- [x] T069 Write orchestrator integration tests: triage routing for all 3 anomaly types, halt condition when all evidence unavailable, error event on exception — LLM mocked in all tests in `backend/tests/test_orchestrator.py`
+- [x] T070 [P] Write XGBoost model test: assert precision ≥ 0.75 at operating threshold on holdout set in `backend/tests/test_model.py`
+- [x] T071 [P] Write rules baseline ablation tests in `backend/tests/test_rules_baseline.py`
+- [x] T072 [P] Write API endpoint tests for all routes (claims list, claim detail, investigation CRUD, analytics, NCCI lookup) in `backend/tests/test_api.py`
+- [x] T072a [P] Write pipeline latency test in `backend/tests/test_performance.py`: trigger investigation on a representative flagged claim, assert total elapsed time < 15s, assert triage SSE event arrives < 100ms after trigger, assert evidence event arrives < 2s after triage — LLM mocked to isolate pipeline latency from LLM variability
+- [x] T073 Verify ≥80% line coverage on `backend/app/ml/`, `backend/app/orchestrator/`, `backend/app/api/` via `pytest --cov=app --cov-report=term-missing`
+- [x] T074 Run complete end-to-end quickstart validation per `quickstart.md` steps 1–8 and confirm all 4 verification scenarios pass
+- [x] T075 [P] Implement and run rationale prompt schema validation: implement `backend/scripts/validate_prompt.py` that loads 50 representative flagged claims from Parquet, runs the rationale node (real LLM, real ChromaDB), and for each output asserts `RationaleResult` Pydantic schema validates, `policy_citations` is non-empty, all 3 `anomaly_flags_addressed` keys are present, and `recommended_action` is non-null; gate: ≥90% of outputs must pass all assertions before T044 is considered shippable (constitution R-007, plan.md)
+- [x] T075a [P] Evaluate rationale quality against SC-003: first create `specs/001-claims-investigation-assistant/rubric.md` defining the evaluation rubric — "useful" (correct anomaly type, ≥1 valid policy citation, recommended action is actionable), "partially useful" (correct anomaly type, weak/absent citations), "not useful" (wrong anomaly type or hallucinated citations); then apply the rubric to all 50-claim outputs from T075 and record results in `data/scores/rationale_eval_results.json`; gate: ≥85% rated "useful" before Phase 7 checkpoint is signed off (spec.md SC-003)
 
 ---
 

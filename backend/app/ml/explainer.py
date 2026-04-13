@@ -10,6 +10,8 @@ import numpy as np
 import shap
 import xgboost as xgb
 
+from app.ml.model import predict_model
+
 logger = logging.getLogger(__name__)
 
 SHAP_TOLERANCE = 1e-5
@@ -55,7 +57,7 @@ class SHAPExplainer:
 
         # Get raw margin predictions for invariant check
         dmatrix = xgb.DMatrix(X, feature_names=self.feature_names)
-        predictions = self.model.predict(dmatrix, output_margin=True)
+        predictions = predict_model(self.model, dmatrix, output_margin=True)
 
         results = []
         for i in range(len(X)):

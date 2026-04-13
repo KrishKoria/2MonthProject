@@ -31,6 +31,37 @@ FEATURE_COLUMNS = [
 ]
 
 
+def _prediction_iteration_range(model: xgb.Booster) -> tuple[int, int] | None:
+    """Use the early-stopped best iteration when the booster exposes one.
+
+    XGBoost's ``Booster.predict`` uses the full ensemble by default even when
+    early stopping found a better checkpoint. SHAP TreeExplainer aligns to the
+    best iteration, so all downstream prediction paths must do the same or the
+    score/attribution invariant breaks.
+    """
+    best_iteration = getattr(model, "best_iteration", None)
+    if best_iteration is None:
+        return None
+    best_iteration = int(best_iteration)
+    if best_iteration < 0:
+        return None
+    return (0, best_iteration + 1)
+
+
+def predict_model(
+    model: xgb.Booster,
+    dmatrix: xgb.DMatrix,
+    *,
+    output_margin: bool = False,
+) -> np.ndarray:
+    """Predict using the model's effective tree range."""
+    kwargs: dict[str, object] = {"output_margin": output_margin}
+    iteration_range = _prediction_iteration_range(model)
+    if iteration_range is not None:
+        kwargs["iteration_range"] = iteration_range
+    return model.predict(dmatrix, **kwargs)
+
+
 def grouped_temporal_split(
     features_df: pd.DataFrame,
     claims_df: pd.DataFrame,
@@ -144,7 +175,7 @@ def evaluate_model(
     y_test = test_df[target_col].values
 
     dtest = xgb.DMatrix(X_test, feature_names=feature_cols)
-    y_pred_proba = model.predict(dtest)
+    y_pred_proba = predict_model(model, dtest)
     y_pred = (y_pred_proba >= threshold).astype(int)
 
     # AUC-ROC

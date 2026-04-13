@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
-test("uses the shared chart container sizing wrapper", { timeout: 20000 }, async () => {
+test("uses the shared chart container sizing wrapper", async () => {
   const mod = await import("./PrecisionRecallChart");
 
   const html = renderToStaticMarkup(

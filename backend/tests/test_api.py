@@ -7,6 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_data_store
+from app.api.routes import investigation as investigation_routes
+from app.api.routes import ncci as ncci_routes
 from app.config import settings
 from app.data.loader import DataStore, load_data_store
 from app.data.schemas import (
@@ -289,3 +291,188 @@ def test_analytics_overview(client):
     assert "rules_baseline_flagged" in data
     assert "ml_only_flagged" in data
     assert "combined_flagged" in data
+
+
+def test_get_claim_detail_returns_claim_risk_score_and_null_investigation(client):
+    res = client.get("/api/claims/CLM-0001")
+
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["claim"]["claim_id"] == "CLM-0001"
+    assert data["claim"]["risk_band"] == "high"
+    assert data["risk_score"]["claim_id"] == "CLM-0001"
+    assert data["investigation"] is None
+
+
+def test_submit_decision_updates_claim_status_and_persists_human_decision(client):
+    from app.main import app as _app
+
+    store: DataStore = _app.dependency_overrides[get_data_store]()
+    store.investigations["CLM-0001"] = _sample_investigation("CLM-0001")
+
+    res = client.patch(
+        "/api/claims/CLM-0001/investigation",
+        json={"decision": "accepted", "notes": "Evidence is strong."},
+    )
+
+    assert res.status_code == 200
+    body = res.json()["data"]
+    assert body["human_decision"]["decision"] == "accepted"
+    assert body["human_decision"]["notes"] == "Evidence is strong."
+    assert store.get_claim("CLM-0001")["claim_status"] == "accepted"
+
+    invalid = client.patch(
+        "/api/claims/CLM-0001/investigation",
+        json={"decision": "rejected"},
+    )
+    assert invalid.status_code == 400
+    assert invalid.json()["error"]["code"] == "validation_error"
+
+
+def test_model_performance_route_returns_metrics_and_503_when_missing(client):
+    from app.main import app as _app
+
+    store: DataStore = _app.dependency_overrides[get_data_store]()
+    store.model_metadata = {
+        "auc_roc": 0.93,
+        "precision_at_k": {"k": 12, "precision": 0.81},
+        "precision_recall_curve": [{"threshold": 0.5, "precision": 0.81, "recall": 0.7}],
+        "per_anomaly_recall": {"upcoding": 0.88},
+        "ablation": {"combined": {"precision": 0.82, "recall": 0.71, "f1": 0.76}},
+    }
+
+    res = client.get("/api/analytics/model-performance")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["data_framing"] == "synthetic"
+    assert data["auc_roc"] == 0.93
+
+    store.model_metadata = {}
+    unavailable = client.get("/api/analytics/model-performance")
+    assert unavailable.status_code == 503
+
+
+def test_ncci_lookup_route_returns_engine_result(client, monkeypatch):
+    class _StubEngine:
+        def lookup_ncci_conflict(self, code_1, code_2, service_date):
+            return {
+                "conflict_exists": True,
+                "edit_type": "unbundling",
+                "effective_date": "2024-01-01",
+                "rationale": "Codes conflict.",
+            }
+
+    monkeypatch.setattr(ncci_routes, "_engine", _StubEngine())
+
+    res = client.get("/api/ncci/27447/27446?service_date=2026-03-15")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["code_1"] == "27447"
+    assert data["conflict_exists"] is True
+    assert data["edit_type"] == "unbundling"
+
+
+def test_investigate_stream_halts_when_all_evidence_is_unavailable(client, monkeypatch):
+    from app.main import app as _app
+
+    store: DataStore = _app.dependency_overrides[get_data_store]()
+
+    monkeypatch.setattr(
+        investigation_routes,
+        "run_triage",
+        lambda state: {
+            "anomaly_type": None,
+            "anomaly_flags": {
+                "upcoding": "insufficient_data",
+                "ncci_violation": "not_applicable",
+                "duplicate": "insufficient_data",
+            },
+            "confidence": 0.2,
+            "priority": "low",
+            "evidence_tools_to_use": ["rag_retrieval"],
+            "investigation_status": "triage_complete",
+        },
+    )
+    monkeypatch.setattr(
+        investigation_routes,
+        "run_evidence",
+        lambda state, data_store: {
+            "investigation_status": "manual_review_required",
+            "evidence_results": {
+                "policy_citations": [],
+                "sources_consulted": [
+                    {"tool": "ncci_lookup", "status": "unavailable", "reason": "no_ncci_codes_in_claim"},
+                    {"tool": "rag_retrieval", "status": "unavailable", "reason": "no_results"},
+                    {"tool": "provider_history", "status": "unavailable", "reason": "provider_not_found"},
+                    {"tool": "duplicate_search", "status": "unavailable", "reason": "no_matches"},
+                ],
+            },
+        },
+    )
+
+    async def _unexpected_stream(state):
+        if False:  # pragma: no cover - keeps this as an async generator
+            yield {"type": "chunk", "text": ""}
+
+    monkeypatch.setattr(investigation_routes, "stream_rationale", _unexpected_stream)
+
+    with client.stream("POST", "/api/claims/CLM-0001/investigate") as response:
+        body = "\n".join(line for line in response.iter_lines() if line)
+
+    assert response.status_code == 200
+    assert "event: triage" in body
+    assert "event: evidence" in body
+    assert "event: halt" in body
+    assert store.investigations["CLM-0001"].investigation_status == InvestigationStatus.MANUAL_REVIEW_REQUIRED
+
+
+def test_investigate_stream_emits_error_event_when_rationale_fails(client, monkeypatch):
+    from app.main import app as _app
+
+    store: DataStore = _app.dependency_overrides[get_data_store]()
+
+    monkeypatch.setattr(
+        investigation_routes,
+        "run_triage",
+        lambda state: {
+            "anomaly_type": "upcoding",
+            "anomaly_flags": {
+                "upcoding": "detected",
+                "ncci_violation": "not_applicable",
+                "duplicate": "insufficient_data",
+            },
+            "confidence": 0.82,
+            "priority": "high",
+            "evidence_tools_to_use": ["rag_retrieval", "provider_history"],
+            "investigation_status": "triage_complete",
+        },
+    )
+    monkeypatch.setattr(
+        investigation_routes,
+        "run_evidence",
+        lambda state, data_store: {
+            "investigation_status": "evidence_complete",
+            "evidence_results": {
+                "policy_citations": [],
+                "sources_consulted": [
+                    {"tool": "ncci_lookup", "status": "success", "reason": "no_conflicts_found"},
+                    {"tool": "rag_retrieval", "status": "success", "reason": None},
+                    {"tool": "provider_history", "status": "success", "reason": None},
+                    {"tool": "duplicate_search", "status": "success", "reason": None},
+                ],
+            },
+        },
+    )
+
+    async def _error_stream(state):
+        yield {"type": "error", "message": "synthetic_failure"}
+
+    monkeypatch.setattr(investigation_routes, "stream_rationale", _error_stream)
+
+    with client.stream("POST", "/api/claims/CLM-0001/investigate") as response:
+        body = "\n".join(line for line in response.iter_lines() if line)
+
+    assert response.status_code == 200
+    assert "event: error" in body
+    assert "synthetic_failure" in body
+    assert store.investigations["CLM-0001"].investigation_status == InvestigationStatus.ERROR

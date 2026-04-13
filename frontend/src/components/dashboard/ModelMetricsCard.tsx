@@ -121,7 +121,7 @@ export function ModelMetricsCard({ performance }: ModelMetricsCardProps) {
             Precision @ K
           </CardDescription>
           <CardTitle className="font-display text-3xl font-normal italic">
-            The queue's top {k}
+            The queue&apos;s top {k}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

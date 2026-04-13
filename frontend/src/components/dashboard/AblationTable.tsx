@@ -122,7 +122,7 @@ export function AblationTable({ ablation }: Props) {
         </ul>
       </CardContent>
       <CardFooter className="text-xs italic text-muted-foreground">
-        Combined lifts recall without surrendering much precision — that's the point of the layered design.
+        Combined lifts recall without surrendering much precision — that&apos;s the point of the layered design.
       </CardFooter>
     </Card>
   );

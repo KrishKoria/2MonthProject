@@ -1,7 +1,7 @@
 """End-to-end batch scoring pipeline: features -> model -> SHAP -> risk_band."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -9,7 +9,7 @@ import xgboost as xgb
 
 from app.config import settings
 from app.ml.explainer import SHAPExplainer
-from app.ml.model import FEATURE_COLUMNS
+from app.ml.model import FEATURE_COLUMNS, predict_model
 from app.ml.rules_baseline import compute_rules_flags
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def batch_score(
 
     # Raw XGBoost predictions (probability)
     dmatrix = xgb.DMatrix(X, feature_names=feature_cols)
-    raw_scores = model.predict(dmatrix)
+    raw_scores = predict_model(model, dmatrix)
 
     # Normalize to 0-100
     normalized_scores = (raw_scores * 100).clip(0, 100)
@@ -57,7 +57,7 @@ def batch_score(
     rules_lookup = dict(zip(rules_df["claim_id"], rules_df["rules_flags"]))
 
     # Build results
-    scored_at = datetime.utcnow().isoformat() + "Z"
+    scored_at = datetime.now(timezone.utc).isoformat()
     records = []
     for i, claim_id in enumerate(claim_ids):
         score = float(normalized_scores[i])
