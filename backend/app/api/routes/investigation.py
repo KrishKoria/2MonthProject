@@ -20,11 +20,13 @@ from datetime import datetime, timezone
 from typing import Annotated, Any, AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from app.api.dependencies import get_data_store
 from app.data.loader import DataStore
 from app.data.schemas import (
     EvidenceEnvelope,
+    HumanDecision,
     Investigation,
     InvestigationStatus,
     RationaleResult,
@@ -209,6 +211,56 @@ async def get_investigation(
     if inv is None:
         raise HTTPException(status_code=404, detail=f"No investigation for claim {claim_id}")
     return _envelope(inv.model_dump(mode="json"))
+
+
+_DECISION_TO_STATUS = {
+    "accepted": "accepted",
+    "rejected": "rejected",
+    "escalated": "escalated",
+}
+
+
+class DecisionRequest(BaseModel):
+    decision: str = Field(pattern="^(accepted|rejected|escalated)$")
+    notes: str | None = None
+
+
+@router.patch("/{claim_id}/investigation")
+async def submit_decision(
+    claim_id: str,
+    body: DecisionRequest,
+    store: Annotated[DataStore, Depends(get_data_store)],
+) -> dict:
+    """Record investigator decision (T056).
+
+    Validates state machine transition via `update_claim_status`, writes
+    `human_decision` onto the stored Investigation, and persists.
+    """
+    if store.get_claim(claim_id) is None:
+        raise HTTPException(status_code=404, detail=f"Claim {claim_id} not found")
+    inv = store.investigations.get(claim_id)
+    if inv is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"No investigation on file for {claim_id}; run /investigate first",
+        )
+
+    # Validate state transition (raises ValueError → 400 via global handler)
+    store.update_claim_status(claim_id, _DECISION_TO_STATUS[body.decision])
+
+    decided_at = datetime.now(timezone.utc)
+    updated = inv.model_copy(
+        update={
+            "human_decision": HumanDecision(
+                decision=body.decision,
+                notes=body.notes,
+                decided_at=decided_at,
+            ),
+            "updated_at": decided_at,
+        }
+    )
+    store.save_investigation(updated)
+    return _envelope(updated.model_dump(mode="json"))
 
 
 @router.get("/{claim_id}/investigation/status")

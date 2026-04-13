@@ -72,3 +72,27 @@ async def overview(
         "ml_only_flagged": int((ml_flagged_mask & ~rules_flagged_mask).sum()),
         "combined_flagged": int(combined_mask.sum()),
     })
+
+
+@router.get("/model-performance")
+async def model_performance(
+    store: Annotated[DataStore, Depends(get_data_store)],
+) -> dict:
+    """Return model evaluation metrics for US4 — all synthetic-data framed."""
+    meta = store.model_metadata or {}
+    if not meta:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=503,
+            detail="Model metadata unavailable — run backend/scripts/train_model.py",
+        )
+
+    return _envelope({
+        "auc_roc": float(meta.get("auc_roc", 0.0)),
+        "precision_at_k": meta.get("precision_at_k") or {},
+        "precision_recall_curve": meta.get("precision_recall_curve") or [],
+        "per_anomaly_recall": meta.get("per_anomaly_recall") or {},
+        "ablation": meta.get("ablation") or {},
+        "data_framing": "synthetic",
+    })
