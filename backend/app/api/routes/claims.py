@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import get_data_store
 from app.data.loader import DataStore
+from app.utils.collections import ensure_list
 
 router = APIRouter(prefix="/api/claims", tags=["claims"])
 
@@ -22,16 +23,31 @@ def _envelope(data: Any) -> dict:
     }
 
 
+def _normalize_score(score: dict | None) -> dict | None:
+    if score is None:
+        return None
+    scored_at = score.get("scored_at")
+    return {
+        "claim_id": score.get("claim_id"),
+        "xgboost_score": float(score.get("xgboost_score", 0) or 0),
+        "shap_values": dict(score.get("shap_values") or {}),
+        "rules_flags": ensure_list(score.get("rules_flags")),
+        "risk_band": score.get("risk_band"),
+        "scored_at": scored_at.isoformat() if isinstance(scored_at, datetime) else scored_at,
+    }
+
+
 def _merge_claim_with_score(claim: dict, score: dict | None) -> dict:
+    normalized_score = _normalize_score(score)
     out = {
         "claim_id": claim["claim_id"],
         "member_id": claim["member_id"],
         "provider_id": claim["provider_id"],
         "service_date": claim["service_date"].isoformat() if isinstance(claim["service_date"], date) else claim["service_date"],
         "claim_receipt_date": claim["claim_receipt_date"].isoformat() if isinstance(claim["claim_receipt_date"], date) else claim["claim_receipt_date"],
-        "procedure_codes": list(claim.get("procedure_codes") or []),
-        "diagnosis_codes": list(claim.get("diagnosis_codes") or []),
-        "modifiers": list(claim.get("modifiers") or []),
+        "procedure_codes": ensure_list(claim.get("procedure_codes")),
+        "diagnosis_codes": ensure_list(claim.get("diagnosis_codes")),
+        "modifiers": ensure_list(claim.get("modifiers")),
         "charge_amount": float(claim["charge_amount"]),
         "allowed_amount": float(claim["allowed_amount"]),
         "paid_amount": float(claim["paid_amount"]),
@@ -39,11 +55,11 @@ def _merge_claim_with_score(claim: dict, score: dict | None) -> dict:
         "claim_status": claim["claim_status"],
         "anomaly_type": claim.get("anomaly_type"),
     }
-    if score is not None:
-        out["risk_score"] = float(score.get("xgboost_score", 0))
-        out["risk_band"] = score.get("risk_band")
-        out["rules_flags"] = list(score.get("rules_flags") or [])
-        out["shap_values"] = dict(score.get("shap_values") or {})
+    if normalized_score is not None:
+        out["risk_score"] = normalized_score["xgboost_score"]
+        out["risk_band"] = normalized_score["risk_band"]
+        out["rules_flags"] = normalized_score["rules_flags"]
+        out["shap_values"] = normalized_score["shap_values"]
     else:
         out["risk_score"] = None
         out["risk_band"] = None
@@ -143,6 +159,6 @@ async def get_claim(
     investigation = store.investigations.get(claim_id)
     return _envelope({
         "claim": _merge_claim_with_score(claim, score),
-        "risk_score": score,
+        "risk_score": _normalize_score(score),
         "investigation": investigation.model_dump(mode="json") if investigation else None,
     })

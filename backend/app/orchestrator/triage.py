@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 import time
 
+from app.utils.collections import ensure_list
+
 logger = logging.getLogger(__name__)
 
 HIGH_RISK_THRESHOLD = 70.0
@@ -28,11 +30,11 @@ def run_triage(state: dict) -> dict:
     """Deterministic triage — returns a partial state update."""
     start = time.perf_counter()
     claim = state.get("claim_data") or {}
-    rules_flags = list(state.get("rules_flags") or [])
+    rules_flags = ensure_list(state.get("rules_flags"))
     score = float(state.get("xgboost_risk_score") or 0.0)
 
-    proc_codes = claim.get("procedure_codes") or []
-    n_codes = len(proc_codes) if isinstance(proc_codes, (list, tuple)) else 0
+    proc_codes = ensure_list(claim.get("procedure_codes"))
+    n_codes = len(proc_codes)
 
     flags: dict[str, str] = {}
 

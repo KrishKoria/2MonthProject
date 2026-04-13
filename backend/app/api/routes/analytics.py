@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_data_store
 from app.data.loader import DataStore
+from app.utils.collections import has_items
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -45,7 +46,7 @@ async def overview(
     high_risk_mask = scores_df["risk_band"] == "high"
     high_risk_count = int(high_risk_mask.sum())
 
-    rules_flagged_mask = scores_df["rules_flags"].apply(lambda f: bool(f) and len(f) > 0)
+    rules_flagged_mask = scores_df["rules_flags"].apply(has_items)
     ml_flagged_mask = high_risk_mask
     combined_mask = rules_flagged_mask | ml_flagged_mask
     flagged_count = int(combined_mask.sum())

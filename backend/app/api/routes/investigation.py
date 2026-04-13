@@ -35,6 +35,7 @@ from app.data.schemas import (
 from app.orchestrator.evidence import run_evidence
 from app.orchestrator.rationale import stream_rationale
 from app.orchestrator.triage import run_triage
+from app.utils.collections import ensure_list
 from app.utils.sse import sse_event, stream_response
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ def _build_initial_state(store: DataStore, claim_id: str) -> dict:
         "claim_data": claim,
         "xgboost_risk_score": float(score.get("xgboost_score") or 0.0),
         "shap_values": dict(score.get("shap_values") or {}),
-        "rules_flags": list(score.get("rules_flags") or []),
+        "rules_flags": ensure_list(score.get("rules_flags")),
         "anomaly_flags": {},
         "evidence_tools_to_use": [],
         "investigation_status": "pending",

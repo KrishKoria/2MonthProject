@@ -5,7 +5,6 @@ import {
   Line,
   LineChart,
   ReferenceDot,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -20,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ChartContainer } from "@/components/ui/chart";
 import type { ModelPerformance } from "@/lib/types";
 
 interface Props {
@@ -78,8 +78,7 @@ export function PrecisionRecallChart({ curve, operatingThreshold = 0.5 }: Props)
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <ChartContainer config={{}} className="h-64 w-full min-w-0 aspect-auto">
             <LineChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 4 }}>
               <CartesianGrid
                 stroke="var(--border)"
@@ -144,8 +143,7 @@ export function PrecisionRecallChart({ curve, operatingThreshold = 0.5 }: Props)
                 />
               ) : null}
             </LineChart>
-          </ResponsiveContainer>
-        </div>
+        </ChartContainer>
 
         <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">

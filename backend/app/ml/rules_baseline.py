@@ -9,6 +9,8 @@ from datetime import timedelta
 
 import pandas as pd
 
+from app.utils.collections import ensure_list
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,8 +32,8 @@ def compute_rules_flags(claims_df: pd.DataFrame) -> pd.DataFrame:
         flags = []
 
         # 1. NCCI conflict check
-        proc_codes = row["procedure_codes"]
-        if isinstance(proc_codes, list) and len(proc_codes) >= 2:
+        proc_codes = ensure_list(row["procedure_codes"])
+        if len(proc_codes) >= 2:
             from app.evidence.ncci_engine import NCCIEngine
             try:
                 engine = NCCIEngine()

@@ -17,6 +17,7 @@ from app.data.loader import DataStore
 from app.data.schemas import DuplicateMatch, NCCIFinding, PolicyCitation, SourceRecord
 from app.evidence.ncci_engine import NCCIEngine
 from app.evidence.rag_retriever import RAGRetrievalError, retrieve
+from app.utils.collections import ensure_list
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ def ncci_lookup(
     claim: dict, *, engine: NCCIEngine | None = None
 ) -> tuple[NCCIFinding | None, SourceRecord]:
     """Check every CPT pair on the claim for an active NCCI edit."""
-    proc_codes = list(claim.get("procedure_codes") or [])
+    proc_codes = ensure_list(claim.get("procedure_codes"))
     if len(proc_codes) < 2:
         return None, SourceRecord(
             tool="ncci_lookup", status="unavailable", reason="no_ncci_codes_in_claim"
@@ -72,7 +73,7 @@ def rag_retrieval(
     claim: dict, anomaly_type: str | None, *, top_k: int = 5
 ) -> tuple[list[PolicyCitation], SourceRecord]:
     """Retrieve top-k CMS policy chunks relevant to the claim + anomaly type."""
-    proc_codes = list(claim.get("procedure_codes") or [])
+    proc_codes = ensure_list(claim.get("procedure_codes"))
     parts: list[str] = []
     if anomaly_type:
         parts.append(anomaly_type.replace("_", " "))
@@ -114,7 +115,7 @@ def provider_history(
 
     claims_df = store.claims_df
     this_charge = float(claim.get("charge_amount") or 0.0)
-    proc_codes = list(claim.get("procedure_codes") or [])
+    proc_codes = ensure_list(claim.get("procedure_codes"))
     proc_summary = ", ".join(str(c) for c in proc_codes[:3]) or "n/a"
 
     if claims_df is None or claims_df.empty:
@@ -170,7 +171,7 @@ def duplicate_search(
             status="unavailable",
             reason="missing_member_or_date",
         )
-    this_codes = set(claim.get("procedure_codes") or [])
+    this_codes = set(ensure_list(claim.get("procedure_codes")))
     provider_id = claim.get("provider_id")
 
     df = claims_df
@@ -186,7 +187,7 @@ def duplicate_search(
     matches: list[DuplicateMatch] = []
     for idx in candidates_idx:
         row = df.loc[idx]
-        other_codes = set(row.get("procedure_codes") or [])
+        other_codes = set(ensure_list(row.get("procedure_codes")))
         if this_codes and not (this_codes & other_codes):
             continue
         overlap = (
