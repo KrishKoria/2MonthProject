@@ -29,6 +29,20 @@ const KNOWN_EVENTS: ReadonlySet<KnownEventName> = new Set<KnownEventName>([
   "error",
 ]);
 
+function splitSseFrames(buffer: string) {
+  const frames: string[] = [];
+  let rest = buffer;
+
+  while (true) {
+    const match = rest.match(/\r?\n\r?\n/);
+    if (!match || match.index === undefined) break;
+    frames.push(rest.slice(0, match.index));
+    rest = rest.slice(match.index + match[0].length);
+  }
+
+  return { frames, rest };
+}
+
 export interface StreamHandlers {
   onEvent?: (event: InvestigationEvent) => void;
   onTriage?: (e: TriageEvent) => void;
@@ -124,10 +138,9 @@ export function streamInvestigation(
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        let sep: number;
-        while ((sep = buffer.indexOf("\n\n")) !== -1) {
-          const frame = buffer.slice(0, sep);
-          buffer = buffer.slice(sep + 2);
+        const { frames, rest } = splitSseFrames(buffer);
+        buffer = rest;
+        for (const frame of frames) {
           const parsed = parseFrame(frame);
           if (parsed) dispatch(handlers, parsed);
         }

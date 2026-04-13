@@ -98,15 +98,15 @@ export interface RationaleResult {
   summary: string;
   supporting_evidence: string[];
   policy_citations: PolicyCitation[];
-  anomaly_flags_addressed: Record<string, string | null>;
+  anomaly_flags_addressed: Partial<Record<AnomalyType, string | null>>;
   recommended_action: string;
   confidence: number;
   review_needed: boolean;
 }
 
 export interface TriageResult {
-  anomaly_type: string | null;
-  anomaly_flags: Record<string, AnomalyFlagValue>;
+  anomaly_type: AnomalyType | null;
+  anomaly_flags: Record<AnomalyType, AnomalyFlagValue>;
   confidence: number;
   priority: "high" | "medium" | "low";
   evidence_tools_to_use: EvidenceTool[];

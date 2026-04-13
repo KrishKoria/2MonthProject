@@ -4,13 +4,16 @@
 
 import type {
   AnalyticsOverview,
+  AnomalyType,
   Claim,
   ClaimDetail,
+  ClaimStatus,
   ClaimsPage,
   DecisionKind,
   Investigation,
   ModelPerformance,
   NCCIFinding,
+  RiskBand,
 } from "./types";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -35,6 +38,22 @@ interface Envelope<T> {
   [key: string]: unknown;
 }
 
+function buildHeaders(init: RequestInit) {
+  const headers = new Headers(init.headers);
+
+  if (!headers.has("Accept")) {
+    headers.set("Accept", "application/json");
+  }
+
+  const method = init.method?.toUpperCase() ?? "GET";
+  const hasBody = init.body !== undefined && init.body !== null;
+  if (hasBody && method !== "GET" && method !== "HEAD" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return headers;
+}
+
 async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -43,11 +62,7 @@ async function request<T>(
   const url = `${baseUrl}${path}`;
   const res = await fetch(url, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...(init.headers ?? {}),
-    },
+    headers: buildHeaders(init),
   });
 
   let body: unknown = null;
@@ -90,13 +105,13 @@ function buildQuery(params: Record<string, QueryValue> | ClaimsQuery): string {
 export interface ClaimsQuery {
   page?: number;
   page_size?: number;
-  status?: string;
-  risk_band?: string;
-  anomaly_type?: string;
+  status?: ClaimStatus;
+  risk_band?: RiskBand;
+  anomaly_type?: AnomalyType;
   provider_id?: string;
   date_from?: string;
   date_to?: string;
-  sort_by?: string;
+  sort_by?: "risk_score" | "service_date" | "claim_receipt_date" | "charge_amount";
   sort_dir?: "asc" | "desc";
 }
 
