@@ -50,7 +50,9 @@ class RiskScore(BaseModel):
 
     claim_id: str
     xgboost_score: float = Field(ge=0, le=100)
+    xgboost_raw_margin: float | None = None
     shap_values: dict[str, float]
+    shap_base_value: float | None = None
     rules_flags: list[str]
     risk_band: RiskBand
     scored_at: datetime

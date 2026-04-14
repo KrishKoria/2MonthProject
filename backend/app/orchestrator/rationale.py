@@ -59,6 +59,19 @@ def _triage_view(state: dict) -> dict:
     }
 
 
+def _missing_detected_flag_explanations(
+    triage_flags: dict[str, str], addressed_flags: dict[str, object]
+) -> list[str]:
+    missing: list[str] = []
+    for flag, status in triage_flags.items():
+        if status != "detected":
+            continue
+        explanation = addressed_flags.get(flag)
+        if not isinstance(explanation, str) or not explanation.strip():
+            missing.append(flag)
+    return missing
+
+
 async def stream_rationale(
     state: dict,
     *,
@@ -76,12 +89,11 @@ async def stream_rationale(
     triage = _triage_view(state)
     evidence = state.get("evidence_results") or {}
 
-    # SHAP invariant pre-check (constitution VI, R-007). The per-claim SHAP dict
-    # from the scoring pipeline uses feature-name keys; a `base_value` entry is
-    # optional. Skip the check cleanly if we lack base/pred metadata.
+    # SHAP invariant pre-check (constitution VI, R-007). The scoring pipeline
+    # persists raw margin and base value alongside the feature-level SHAP dict.
     shap_values = dict(state.get("shap_values") or {})
-    base = shap_values.pop("base_value", None)
-    pred = state.get("xgboost_risk_score")
+    base = state.get("shap_base_value")
+    pred = state.get("xgboost_raw_margin")
     if shap_values and base is not None and pred is not None:
         try:
             _check_shap_invariant(shap_values, float(pred), float(base))
@@ -111,6 +123,7 @@ async def stream_rationale(
             temperature=0.2,
             response_format={"type": "json_object"},
             stream=True,
+            timeout=settings.LLM_TIMEOUT_SECONDS,
         )
         async for event in stream:
             choices = getattr(event, "choices", None) or []
@@ -121,6 +134,10 @@ async def stream_rationale(
             if text:
                 buffer += text
                 yield {"type": "chunk", "text": text}
+    except TimeoutError as exc:
+        logger.exception("LLM streaming timed out")
+        yield {"type": "error", "message": f"llm_timeout: {exc}"}
+        return
     except Exception as exc:
         logger.exception("LLM streaming failed")
         yield {"type": "error", "message": f"llm_error: {exc}"}
@@ -139,6 +156,16 @@ async def stream_rationale(
     if not isinstance(flags, dict) or not _REQUIRED_FLAG_KEYS.issubset(flags.keys()):
         missing = _REQUIRED_FLAG_KEYS - set(flags.keys() if isinstance(flags, dict) else [])
         yield {"type": "error", "message": f"missing_anomaly_flags_addressed: {sorted(missing)}"}
+        return
+    missing_detected = _missing_detected_flag_explanations(
+        triage.get("anomaly_flags") or {},
+        flags,
+    )
+    if missing_detected:
+        yield {
+            "type": "error",
+            "message": f"missing_detected_flag_explanations: {missing_detected}",
+        }
         return
 
     try:

@@ -15,14 +15,16 @@ All emitted events carry the required SSE headers via `stream_response`.
 
 from __future__ import annotations
 
+import inspect
 import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any, AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
-from app.api.dependencies import get_data_store
+from app.api.dependencies import get_data_store, get_openai_client
 from app.data.loader import DataStore
 from app.data.schemas import (
     EvidenceEnvelope,
@@ -62,7 +64,17 @@ def _build_initial_state(store: DataStore, claim_id: str) -> dict:
         "claim_id": claim_id,
         "claim_data": claim,
         "xgboost_risk_score": float(score.get("xgboost_score") or 0.0),
+        "xgboost_raw_margin": (
+            float(score["xgboost_raw_margin"])
+            if score.get("xgboost_raw_margin") is not None
+            else None
+        ),
         "shap_values": dict(score.get("shap_values") or {}),
+        "shap_base_value": (
+            float(score["shap_base_value"])
+            if score.get("shap_base_value") is not None
+            else None
+        ),
         "rules_flags": ensure_list(score.get("rules_flags")),
         "anomaly_flags": {},
         "evidence_tools_to_use": [],
@@ -91,6 +103,7 @@ def _persist(store: DataStore, inv: Investigation) -> None:
 async def investigate(
     claim_id: str,
     store: Annotated[DataStore, Depends(get_data_store)],
+    openai_client: Annotated[object | None, Depends(get_openai_client)],
 ):
     """Trigger the investigation pipeline and stream SSE events."""
     initial = _build_initial_state(store, claim_id)  # raises 404 before streaming begins
@@ -123,7 +136,7 @@ async def investigate(
                     created_at=created_at,
                     updated_at=now(),
                 )
-                _persist(store, inv)
+                await run_in_threadpool(_persist, store, inv)
                 yield sse_event(
                     "halt",
                     {
@@ -137,7 +150,10 @@ async def investigate(
             # --- Rationale (streamed) ---
             rationale_result: RationaleResult | None = None
             stream_error: str | None = None
-            async for chunk in stream_rationale(state):
+            rationale_kwargs: dict[str, object] = {}
+            if openai_client is not None and "client" in inspect.signature(stream_rationale).parameters:
+                rationale_kwargs["client"] = openai_client
+            async for chunk in stream_rationale(state, **rationale_kwargs):
                 kind = chunk.get("type")
                 if kind == "chunk":
                     yield sse_event("rationale_chunk", {"text": chunk["text"]})
@@ -157,7 +173,7 @@ async def investigate(
                     created_at=created_at,
                     updated_at=now(),
                 )
-                _persist(store, inv)
+                await run_in_threadpool(_persist, store, inv)
                 yield sse_event(
                     "error",
                     {
@@ -177,7 +193,7 @@ async def investigate(
                 created_at=created_at,
                 updated_at=now(),
             )
-            _persist(store, inv)
+            await run_in_threadpool(_persist, store, inv)
             yield sse_event("complete", inv.model_dump(mode="json"))
 
         except Exception as exc:
@@ -189,7 +205,7 @@ async def investigate(
                     created_at=created_at,
                     updated_at=now(),
                 )
-                _persist(store, err_inv)
+                await run_in_threadpool(_persist, store, err_inv)
             except Exception:
                 logger.exception("Failed to persist error investigation for %s", claim_id)
             yield sse_event(
@@ -247,7 +263,7 @@ async def submit_decision(
         )
 
     # Validate state transition (raises ValueError → 400 via global handler)
-    store.update_claim_status(claim_id, _DECISION_TO_STATUS[body.decision])
+    await run_in_threadpool(store.update_claim_status, claim_id, _DECISION_TO_STATUS[body.decision])
 
     decided_at = datetime.now(timezone.utc)
     updated = inv.model_copy(
@@ -260,7 +276,7 @@ async def submit_decision(
             "updated_at": decided_at,
         }
     )
-    store.save_investigation(updated)
+    await run_in_threadpool(store.save_investigation, updated)
     return _envelope(updated.model_dump(mode="json"))
 
 
