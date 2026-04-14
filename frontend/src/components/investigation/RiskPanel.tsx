@@ -19,7 +19,10 @@ const bandColor: Record<RiskBand, string> = {
 
 export function RiskPanel({ riskScore, riskBand }: RiskPanelProps) {
   const score = riskScore?.xgboost_score ?? null;
-  const pctScore = score != null ? score * 100 : null;
+  const pctScore =
+    score != null
+      ? Math.max(0, Math.min(score <= 1 ? score * 100 : score, 100))
+      : null;
   const color = riskBand ? bandColor[riskBand] : "var(--muted-foreground)";
 
   const topShap = useMemo(

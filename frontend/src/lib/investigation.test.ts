@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import type { EvidenceEnvelope } from "./types";
+
 const baseInvestigation = {
   claim_id: "CLM-100",
   triage: null,
@@ -34,5 +36,66 @@ describe("investigation stage helpers", () => {
         investigation_status: "evidence_complete",
       }),
     ).toBe("rationale");
+  });
+
+  test("prefers evidence-derived clear states over provisional triage flags", async () => {
+    const mod = await import("./investigation");
+
+    const evidence = {
+      policy_citations: [],
+      ncci_findings: null,
+      provider_context: null,
+      duplicate_matches: [],
+      sources_consulted: [
+        { tool: "ncci_lookup", status: "success", reason: "no_conflicts_found" },
+        { tool: "duplicate_search", status: "success", reason: null },
+      ],
+    } satisfies EvidenceEnvelope;
+
+    expect(
+      mod.getDisplayedAnomalyFlagStatus(
+        "ncci_violation",
+        {
+          upcoding: "insufficient_data",
+          ncci_violation: "insufficient_data",
+          duplicate: "insufficient_data",
+        },
+        evidence,
+      ),
+    ).toBe("clear");
+
+    expect(
+      mod.getDisplayedAnomalyFlagStatus(
+        "duplicate",
+        {
+          upcoding: "insufficient_data",
+          ncci_violation: "insufficient_data",
+          duplicate: "insufficient_data",
+        },
+        evidence,
+      ),
+    ).toBe("clear");
+  });
+
+  test("treats known evidence gaps as not applicable instead of unavailable", async () => {
+    const mod = await import("./investigation");
+
+    expect(
+      mod.getEvidenceSourceDisplay(
+        {
+          tool: "ncci_lookup",
+          status: "unavailable",
+          reason: "no_ncci_codes_in_claim",
+        },
+        {
+          ncci_findings: null,
+          duplicate_matches: [],
+        },
+      ),
+    ).toEqual({
+      tone: "not_applicable",
+      headline: "Not applicable.",
+      detail: "This claim does not contain enough procedure codes for an NCCI pair check.",
+    });
   });
 });

@@ -16,11 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
-import { inferInvestigationStage, type InvestigationStage } from "@/lib/investigation";
+import {
+  getDisplayedAnomalyFlagStatus,
+  inferInvestigationStage,
+  type DisplayedAnomalyFlagStatus,
+  type InvestigationStage,
+} from "@/lib/investigation";
 import { streamInvestigation } from "@/lib/sse";
 import { cn } from "@/lib/utils";
 import type {
-  AnomalyFlagValue,
   EvidenceEnvelope,
   HumanDecision,
   Investigation,
@@ -45,10 +49,12 @@ const STAGES: Array<{ key: Exclude<InvestigationStage, "idle" | "error" | "halte
   { key: "done", label: "Sealed" },
 ];
 
-const FLAG_TONE: Record<AnomalyFlagValue, { bg: string; fg: string; label: string }> = {
+const FLAG_TONE: Record<DisplayedAnomalyFlagStatus, { bg: string; fg: string; label: string }> = {
   detected: { bg: "color-mix(in oklch, var(--chart-1) 14%, transparent)", fg: "var(--chart-1)", label: "Detected" },
+  clear: { bg: "color-mix(in oklch, var(--chart-3) 16%, transparent)", fg: "var(--chart-3)", label: "Clear" },
   not_applicable: { bg: "var(--muted)", fg: "var(--muted-foreground)", label: "N/A" },
   insufficient_data: { bg: "color-mix(in oklch, var(--chart-2) 18%, transparent)", fg: "var(--chart-2)", label: "Insufficient" },
+  unavailable: { bg: "color-mix(in oklch, var(--chart-2) 12%, transparent)", fg: "var(--chart-2)", label: "Unavailable" },
 };
 
 const ANOMALY_ORDER: Array<keyof TriageResult["anomaly_flags"]> = [
@@ -228,7 +234,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
-            <TriagePanel triage={triage} />
+            <TriagePanel triage={triage} evidence={evidence} />
           </motion.section>
         ) : null}
       </AnimatePresence>
@@ -462,10 +468,16 @@ function Timeline({
   );
 }
 
-function TriagePanel({ triage }: { triage: TriageResult }) {
+function TriagePanel({
+  triage,
+  evidence,
+}: {
+  triage: TriageResult;
+  evidence: EvidenceEnvelope | null;
+}) {
   return (
     <div className="flex flex-col gap-4">
-      <SectionEyebrow>Triage read</SectionEyebrow>
+      <SectionEyebrow>{evidence ? "Anomaly read" : "Triage read"}</SectionEyebrow>
       <div className="grid gap-4 md:grid-cols-[auto_1fr] md:items-start">
         <div className="flex flex-col gap-2">
           <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -490,7 +502,7 @@ function TriagePanel({ triage }: { triage: TriageResult }) {
         </div>
         <div className="grid gap-2 md:grid-cols-3">
           {ANOMALY_ORDER.map((flag) => {
-            const value = triage.anomaly_flags[flag] ?? "not_applicable";
+            const value = getDisplayedAnomalyFlagStatus(flag, triage.anomaly_flags, evidence);
             const tone = FLAG_TONE[value];
             return (
               <div

@@ -10,7 +10,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import type { EvidenceEnvelope, EvidenceTool, SourceRecord } from "@/lib/types";
+import { getEvidenceSourceDisplay } from "@/lib/investigation";
+import type { EvidenceEnvelope, EvidenceTool } from "@/lib/types";
 
 interface EvidenceCardsProps {
   evidence: EvidenceEnvelope | null;
@@ -26,39 +27,43 @@ const TOOL_META: Record<
   duplicate_search: { label: "Duplicate search", icon: FileSearch },
 };
 
-function SourcesStrip({ sources }: { sources: SourceRecord[] }) {
+function SourcesStrip({ evidence }: { evidence: EvidenceEnvelope }) {
+  const { sources_consulted: sources } = evidence;
   if (!sources.length) return null;
   return (
     <div className="flex flex-wrap gap-2">
       {sources.map((s) => {
         const meta = TOOL_META[s.tool];
         const Icon = meta?.icon ?? CircleDashed;
-        const ok = s.status === "success";
+        const display = getEvidenceSourceDisplay(s, evidence);
+        const ok = display.tone === "success";
+        const iconColor =
+          display.tone === "success"
+            ? "var(--chart-3)"
+            : display.tone === "unavailable"
+              ? "var(--chart-2)"
+              : "var(--muted-foreground)";
         return (
           <HoverCard key={s.tool} openDelay={120}>
-            <HoverCardTrigger asChild>
-              <span
-                className="inline-flex items-center gap-1.5 rounded-sm border border-border/70 bg-background px-2 py-1 text-[10px] uppercase tracking-[0.12em] cursor-help"
-                style={{ color: ok ? "var(--foreground)" : "var(--muted-foreground)" }}
-              >
-                {ok ? (
-                  <CircleCheck className="size-3" style={{ color: "var(--chart-3)" }} />
-                ) : (
-                  <CircleDashed className="size-3" />
-                )}
-                <Icon className="size-3" />
-                {meta?.label ?? s.tool}
-              </span>
+            <HoverCardTrigger
+              className="inline-flex items-center gap-1.5 rounded-sm border border-border/70 bg-background px-2 py-1 text-[10px] uppercase tracking-[0.12em] cursor-help"
+              style={{ color: ok ? "var(--foreground)" : "var(--muted-foreground)" }}
+            >
+              {ok ? (
+                <CircleCheck className="size-3" style={{ color: iconColor }} />
+              ) : (
+                <CircleDashed className="size-3" style={{ color: iconColor }} />
+              )}
+              <Icon className="size-3" />
+              {meta?.label ?? s.tool}
             </HoverCardTrigger>
             <HoverCardContent className="w-64 text-xs">
               <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {s.tool}
               </div>
-              <div className="mt-1 text-sm">
-                {ok ? "Consulted successfully." : "Unavailable."}
-              </div>
-              {s.reason ? (
-                <p className="mt-2 text-muted-foreground italic">{s.reason}</p>
+              <div className="mt-1 text-sm">{display.headline}</div>
+              {display.detail ? (
+                <p className="mt-2 text-muted-foreground italic">{display.detail}</p>
               ) : null}
             </HoverCardContent>
           </HoverCard>
@@ -70,8 +75,7 @@ function SourcesStrip({ sources }: { sources: SourceRecord[] }) {
 
 export function EvidenceCards({ evidence }: EvidenceCardsProps) {
   if (!evidence) return null;
-  const { policy_citations, ncci_findings, provider_context, duplicate_matches, sources_consulted } =
-    evidence;
+  const { policy_citations, ncci_findings, provider_context, duplicate_matches } = evidence;
 
   const blocks: Array<{ key: string; node: React.ReactNode }> = [];
 
@@ -187,7 +191,7 @@ export function EvidenceCards({ evidence }: EvidenceCardsProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <SourcesStrip sources={sources_consulted} />
+      <SourcesStrip evidence={evidence} />
       {blocks.length ? <Separator /> : null}
       <div className="flex flex-col gap-6">
         {blocks.map((b, i) => (
