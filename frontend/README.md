@@ -41,15 +41,37 @@ Start the app:
 bun run dev
 ```
 
-Browser-side requests default to same-origin `/api/...` routes. For server-side rendering
-against a separate backend origin, set `API_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL`.
+### Env File
 
-To point it somewhere else, set:
+The frontend now includes a committed example env file at `frontend/.env.example`.
+
+- Local development does not require a frontend env file when the backend is running at `http://127.0.0.1:8000`.
+- In that default setup, browser requests stay on same-origin `/api/...` paths and Next.js proxies them to the backend.
+- Copy the example only when you need to override the backend origin:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+The example defaults `API_BASE_URL` to `http://127.0.0.1:8000` and leaves `NEXT_PUBLIC_API_BASE_URL` commented out on purpose. That keeps browser traffic on the Next.js `/api` proxy, which is the safest local default and also works when you access the dev server through its network URL.
+
+### Backend Origin Overrides
+
+Use `.env.local` when the backend is not running on the default local origin.
+
+Recommended override:
 
 ```bash
 API_BASE_URL=http://your-api-host:8000
+```
+
+Only set `NEXT_PUBLIC_API_BASE_URL` when the browser must call the backend directly:
+
+```bash
 NEXT_PUBLIC_API_BASE_URL=http://your-api-host:8000
 ```
+
+If you expose `NEXT_PUBLIC_API_BASE_URL`, update the backend `CORS_ALLOW_ORIGINS` value so the browser origin is allowed.
 
 ## Verification
 

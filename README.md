@@ -2,6 +2,54 @@
 
 **Claims Investigation Intelligence Assistant for Medicare Part B Professional Claims**
 
+## Developer Quick Start
+
+This repository has two runnable applications:
+
+- `backend/`: FastAPI API, scoring, evidence retrieval, and investigation orchestration
+- `frontend/`: Next.js review workbench
+
+Primary developer docs:
+
+- `backend/README.md`
+- `frontend/README.md`
+
+### Start the Backend
+
+```powershell
+cd backend
+uv sync --extra dev
+Copy-Item .env.example .env
+uv run app/main.py
+```
+
+The backend listens on `http://127.0.0.1:8000` by default.
+
+### Start the Frontend
+
+```powershell
+cd frontend
+bun install
+bun run dev
+```
+
+The frontend listens on `http://localhost:3000` by default.
+
+### Frontend Env File
+
+`frontend/.env.example` is now committed for the frontend.
+
+- You do not need a frontend env file for the default local setup.
+- Without `.env.local`, browser requests stay on `/api/...` and Next.js proxies them to the backend on `http://127.0.0.1:8000`.
+- Copy `frontend/.env.example` to `frontend/.env.local` only when you need to point the frontend at a different backend origin.
+- Leave `NEXT_PUBLIC_API_BASE_URL` unset unless the browser must call the backend directly.
+
+### Default Local URLs
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://127.0.0.1:8000`
+- Backend health: `http://127.0.0.1:8000/api/health`
+
 ## Background / Business Context
 
 Improper payments in U.S. public health programs are a documented and material problem. The U.S. Government Accountability Office (GAO) reported that the Department of Health and Human Services estimated **over $100 billion in improper payments across Medicare and Medicaid in fiscal year 2023**.[1] CMS's own Comprehensive Error Rate Testing (CERT) program further reported that the **Medicare Fee-for-Service improper payment rate was 6.55% ($28.83 billion) in fiscal year 2025**, and that **Part B provider claims accounted for an 8.44% improper payment rate ($9.62 billion)**.[2]

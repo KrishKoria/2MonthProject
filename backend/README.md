@@ -148,7 +148,8 @@ backend/
 
 If the backend starts but frontend requests fail:
 
-- Confirm `CORS_ALLOW_ORIGINS` includes the frontend origin.
+- If the frontend is using `NEXT_PUBLIC_API_BASE_URL` or another direct browser-to-backend setup, confirm `CORS_ALLOW_ORIGINS` includes the frontend origin.
+- For the default local Next.js setup, frontend browser requests stay on `http://localhost:3000/api/...` and are proxied server-side to the backend, so a missing frontend env file is not itself a failure condition.
 - Check `GET /api/health`.
 - Check that the repo-level `data/` files listed above exist.
 - If startup logs show `WinError 10048` or "address already in use", free the existing process on that port or set `API_PORT` to a different value in `backend/.env`.
