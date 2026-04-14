@@ -164,7 +164,9 @@ export function HumanReviewDesk({
                   Chain of custody
                 </span>
                 <div className="flex flex-col gap-1 text-sm text-foreground/90">
-                  <span className="font-mono text-xs">{humanDecision.investigator_id}</span>
+                  <span className="font-mono text-xs">
+                    {humanDecision.investigator_id ?? "Not recorded"}
+                  </span>
                   <span className="text-muted-foreground">
                     {formatTimestamp(humanDecision.decided_at)}
                   </span>

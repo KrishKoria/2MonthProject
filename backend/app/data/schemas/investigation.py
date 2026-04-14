@@ -40,7 +40,7 @@ class HumanDecision(BaseModel):
     decision: str  # accepted|rejected|escalated
     notes: str | None = None
     decided_at: datetime
-    investigator_id: str = "default_user"
+    investigator_id: str | None = None
 
 
 class Investigation(BaseModel):
@@ -62,7 +62,9 @@ class InvestigationState(TypedDict, total=False):
     claim_id: str
     claim_data: dict
     xgboost_risk_score: float
+    xgboost_raw_margin: float | None
     shap_values: dict[str, float]
+    shap_base_value: float | None
     rules_flags: list[str]
     anomaly_type: str | None
     anomaly_flags: dict[str, str]

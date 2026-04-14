@@ -116,7 +116,7 @@ export interface HumanDecision {
   decision: DecisionKind;
   notes: string | null;
   decided_at: string;
-  investigator_id: string;
+  investigator_id: string | null;
 }
 
 export interface Investigation {

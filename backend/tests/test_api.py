@@ -1,6 +1,8 @@
 """API route tests for claims, analytics, investigation endpoints (US1/US2)."""
 
 from datetime import date, datetime, timezone
+from pathlib import Path
+from uuid import uuid4
 
 import pandas as pd
 import pytest
@@ -21,6 +23,10 @@ from app.data.schemas import (
     TriageResult,
 )
 from app.main import app
+
+
+def _workspace_data_dir(prefix: str) -> Path:
+    return Path(__file__).resolve().parent / "_tmp" / f"{prefix}-{uuid4().hex}"
 
 
 def _make_store() -> DataStore:
@@ -105,7 +111,8 @@ def _make_store() -> DataStore:
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    monkeypatch.setattr(settings, "DATA_DIR", _workspace_data_dir("api"))
     store = _make_store()
     app.dependency_overrides[get_data_store] = lambda: store
     with TestClient(app) as c:
@@ -163,6 +170,12 @@ def test_list_claims_pagination(client):
     assert data["page_size"] == 2
 
 
+def test_list_claims_rejects_unknown_sort_field(client):
+    res = client.get("/api/claims?sort_by=made_up_field")
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "validation_error"
+
+
 def _sample_investigation(claim_id: str = "CLM-0001") -> Investigation:
     return Investigation(
         claim_id=claim_id,
@@ -213,9 +226,9 @@ def _sample_investigation(claim_id: str = "CLM-0001") -> Investigation:
     )
 
 
-def test_investigation_survives_restart(tmp_path, monkeypatch):
+def test_investigation_survives_restart(monkeypatch):
     """T056a / FR-011: save_investigation persists to Parquet and reloads intact."""
-    data_dir = tmp_path / "data"
+    data_dir = _workspace_data_dir("restart")
     monkeypatch.setattr(settings, "DATA_DIR", data_dir)
 
     store = DataStore()
@@ -319,6 +332,7 @@ def test_submit_decision_updates_claim_status_and_persists_human_decision(client
     body = res.json()["data"]
     assert body["human_decision"]["decision"] == "accepted"
     assert body["human_decision"]["notes"] == "Evidence is strong."
+    assert body["human_decision"]["investigator_id"] is None
     assert store.get_claim("CLM-0001")["claim_status"] == "accepted"
 
     invalid = client.patch(
@@ -464,7 +478,7 @@ def test_investigate_stream_emits_error_event_when_rationale_fails(client, monke
         },
     )
 
-    async def _error_stream(state):
+    async def _error_stream(state, **kwargs):
         yield {"type": "error", "message": "synthetic_failure"}
 
     monkeypatch.setattr(investigation_routes, "stream_rationale", _error_stream)
