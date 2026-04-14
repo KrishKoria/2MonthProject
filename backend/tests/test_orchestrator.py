@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
 from types import SimpleNamespace
 
@@ -126,6 +127,20 @@ def test_run_triage_marks_ncci_not_applicable_and_widens_tool_selection():
         "provider_history",
         "duplicate_search",
     ]
+
+
+def test_run_triage_marks_duplicate_not_applicable_without_member_or_service_date():
+    state = {
+        "claim_id": "CLM-1000",
+        "claim_data": _claim(member_id=None, service_date=None, procedure_codes=["99213"]),
+        "rules_flags": [],
+        "xgboost_risk_score": 10.0,
+    }
+
+    result = run_triage(state)
+
+    assert result["anomaly_type"] is None
+    assert result["anomaly_flags"]["duplicate"] == "not_applicable"
 
 
 def test_run_triage_uses_configured_thresholds(monkeypatch):
@@ -493,6 +508,51 @@ async def test_stream_rationale_sets_timeout_and_surfaces_timeout_error():
     assert seen["timeout"] == rationale_module.settings.LLM_TIMEOUT_SECONDS
     assert events[-1]["type"] == "error"
     assert events[-1]["message"].startswith("llm_timeout:")
+
+
+@pytest.mark.asyncio
+async def test_stream_rationale_warns_when_shap_invariant_is_skipped(caplog):
+    payload = {
+        "summary": "The claim exceeds peer billing norms.",
+        "supporting_evidence": ["Charge ratio is materially above peer average."],
+        "policy_citations": [
+            {
+                "text": "CPT billing guidance.",
+                "source": "cms_claims_manual",
+                "chapter": "12",
+                "section": "30.6.1",
+                "relevance_score": 0.91,
+            }
+        ],
+        "anomaly_flags_addressed": {
+            "upcoding": "Charge is elevated against the evidence.",
+            "ncci_violation": None,
+            "duplicate": "No confirmed duplicate, but records are close in time.",
+        },
+        "recommended_action": "Refer for documentation review.",
+        "confidence": 0.84,
+        "review_needed": True,
+    }
+    client = _fake_client([json.dumps(payload)])
+    state = _rationale_state() | {
+        "shap_values": {"charge_amount": 0.3},
+        "shap_base_value": 0.1,
+    }
+
+    with caplog.at_level(logging.WARNING):
+        events = [
+            event async for event in rationale_module.stream_rationale(
+                state,
+                client=client,
+                model="fake-model",
+            )
+        ]
+
+    assert any(event["type"] == "complete" for event in events)
+    assert any(
+        "SHAP invariant skipped" in record.message and "CLM-1000" in record.message
+        for record in caplog.records
+    )
 
 
 @pytest.mark.asyncio

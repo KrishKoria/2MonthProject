@@ -33,6 +33,8 @@ def run_triage(state: dict) -> dict:
 
     proc_codes = ensure_list(claim.get("procedure_codes"))
     n_codes = len(proc_codes)
+    member_id = claim.get("member_id")
+    service_date = claim.get("service_date")
 
     flags: dict[str, str] = {}
 
@@ -53,6 +55,8 @@ def run_triage(state: dict) -> dict:
     # Duplicate — cheap detection via precomputed rules flag; otherwise unknown
     if "duplicate_match" in rules_flags:
         flags["duplicate"] = "detected"
+    elif not member_id or service_date is None:
+        flags["duplicate"] = "not_applicable"
     else:
         flags["duplicate"] = "insufficient_data"
 

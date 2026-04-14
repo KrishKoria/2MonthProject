@@ -108,6 +108,26 @@ Run a targeted test file:
 uv run pytest tests/test_api.py -q
 ```
 
+## Manual Rationale Evaluation Gate
+
+`backend/scripts/validate_prompt.py` is the real-LLM validation path for the
+Phase 7 rationale gates.
+
+- It requires a live `OPENAI_API_KEY`, a populated Chroma store, and the local policy corpus.
+- It is not part of the automated `pytest` suite.
+- Treat it as a manual pre-demo gate, not a CI gate.
+
+Run it explicitly when you need sign-off on the rationale quality thresholds:
+
+```powershell
+uv run python scripts/validate_prompt.py --limit 50
+```
+
+Outputs:
+
+- `data/scores/rationale_validation_results.json`
+- `data/scores/rationale_eval_results.json`
+
 ## Data and Model Scripts
 
 These are optional for rebuilding or refreshing local assets.

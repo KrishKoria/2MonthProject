@@ -94,12 +94,18 @@ async def stream_rationale(
     shap_values = dict(state.get("shap_values") or {})
     base = state.get("shap_base_value")
     pred = state.get("xgboost_raw_margin")
-    if shap_values and base is not None and pred is not None:
-        try:
-            _check_shap_invariant(shap_values, float(pred), float(base))
-        except ValueError as exc:
-            yield {"type": "error", "message": str(exc)}
-            return
+    if shap_values:
+        if base is not None and pred is not None:
+            try:
+                _check_shap_invariant(shap_values, float(pred), float(base))
+            except ValueError as exc:
+                yield {"type": "error", "message": str(exc)}
+                return
+        else:
+            logger.warning(
+                "SHAP invariant skipped for %s — missing raw_margin or base_value",
+                state.get("claim_id"),
+            )
 
     # Import openai lazily so the module imports cleanly in environments without
     # the key set (e.g. the orchestrator unit tests where the client is mocked).

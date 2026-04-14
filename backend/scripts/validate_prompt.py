@@ -1,5 +1,9 @@
 """Validate rationale prompt outputs against schema and usefulness gates.
 
+This script is a manual pre-demo evaluation gate. It is intentionally not part
+of the automated pytest suite because it requires a real OpenAI key, a populated
+Chroma store, and live model responses.
+
 T075:
   - Sample 50 representative flagged claims
   - Run real triage + evidence + rationale with the configured LLM/Chroma store

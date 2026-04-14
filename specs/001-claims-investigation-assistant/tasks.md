@@ -182,8 +182,8 @@
 - [x] T072a [P] Write pipeline latency test in `backend/tests/test_performance.py`: trigger investigation on a representative flagged claim, assert total elapsed time < 15s, assert triage SSE event arrives < 100ms after trigger, assert evidence event arrives < 2s after triage — LLM mocked to isolate pipeline latency from LLM variability
 - [x] T073 Verify ≥80% line coverage on `backend/app/ml/`, `backend/app/orchestrator/`, `backend/app/api/` via `pytest --cov=app --cov-report=term-missing`
 - [x] T074 Run complete end-to-end quickstart validation per `quickstart.md` steps 1–8 and confirm all 4 verification scenarios pass
-- [x] T075 [P] Implement and run rationale prompt schema validation: implement `backend/scripts/validate_prompt.py` that loads 50 representative flagged claims from Parquet, runs the rationale node (real LLM, real ChromaDB), and for each output asserts `RationaleResult` Pydantic schema validates, `policy_citations` is non-empty, all 3 `anomaly_flags_addressed` keys are present, and `recommended_action` is non-null; gate: ≥90% of outputs must pass all assertions before T044 is considered shippable (constitution R-007, plan.md)
-- [x] T075a [P] Evaluate rationale quality against SC-003: first create `specs/001-claims-investigation-assistant/rubric.md` defining the evaluation rubric — "useful" (correct anomaly type, ≥1 valid policy citation, recommended action is actionable), "partially useful" (correct anomaly type, weak/absent citations), "not useful" (wrong anomaly type or hallucinated citations); then apply the rubric to all 50-claim outputs from T075 and record results in `data/scores/rationale_eval_results.json`; gate: ≥85% rated "useful" before Phase 7 checkpoint is signed off (spec.md SC-003)
+- [x] T075 [P] Implement rationale prompt schema validation in `backend/scripts/validate_prompt.py` so it can load 50 representative flagged claims from Parquet, run the rationale node (real LLM, real ChromaDB), and assert that `RationaleResult` Pydantic schema validates, `policy_citations` is non-empty, all 3 `anomaly_flags_addressed` keys are present, and `recommended_action` is non-null
+- [ ] T075a [P] Run the manual 50-claim rationale quality evaluation against SC-003 and record results in `data/scores/rationale_eval_results.json`; this is a pre-demo gate with a real OpenAI key / Chroma store, not a CI-enforced checkbox. Gate: ≥90% schema-valid in T075 output and ≥85% rated "useful" before Phase 7 checkpoint is signed off (spec.md SC-003, constitution R-007)
 
 ---
 
@@ -331,6 +331,7 @@ US3 integrates after US2 completes (small surface area — one PATCH route + 2 f
 - Investigation in-memory store persists to `data/scores/investigations.parquet` on write via T056a (Phase 4) — T046 calls `save_investigation()` on complete/halt/error; T056 calls it on decision write
 - **T056a is a hard gate for FR-011**: lives in Phase 4 alongside T046; Phase 4 checkpoint must not be signed off until T056a is complete; T072 API tests include restart-survival assertion
 - **T075 is a hard gate for production inference**: rationale prompt must pass ≥90% schema-correctness on 50 claims before T044 is considered shippable (R-007, plan.md)
+- **T075/T075a are manual pre-demo gates**: the repository contains the validation script and rubric, but the real-LLM 50-claim run is out-of-band and not part of automated CI
 - **T075a is a hard gate for SC-003**: ≥85% "useful" rating on 50-claim sample required before Phase 7 checkpoint is signed off
 - Exactly 3 frontend pages: `/`, `/claims`, `/claims/[id]` — no additions (constitution V)
 - All 4 SSE response headers required or browser-side failures occur silently (constitution V, sse-events.md)
