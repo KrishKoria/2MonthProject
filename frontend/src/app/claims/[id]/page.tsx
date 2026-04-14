@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/hover-card";
 import { InvestigationConsole } from "@/components/investigation/InvestigationConsole";
 import { RiskPanel } from "@/components/investigation/RiskPanel";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, apiFor } from "@/lib/api";
+import { getServerApiBaseUrl } from "@/lib/server-api";
 import type { ClaimDetail } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ type PageProps = { params: Promise<{ id: string }> };
 
 export default async function ClaimDetailPage({ params }: PageProps) {
   const { id } = await params;
+  const api = apiFor(await getServerApiBaseUrl());
   let detail: ClaimDetail | null = null;
   let error: string | null = null;
   try {

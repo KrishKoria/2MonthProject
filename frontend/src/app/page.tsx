@@ -18,7 +18,8 @@ import { AblationTable } from "@/components/dashboard/AblationTable";
 import { ModelMetricsCard } from "@/components/dashboard/ModelMetricsCard";
 import { PerAnomalyRecallCard } from "@/components/dashboard/PerAnomalyRecallCard";
 import { PrecisionRecallChart } from "@/components/charts/PrecisionRecallChart";
-import { api } from "@/lib/api";
+import { apiFor } from "@/lib/api";
+import { getServerApiBaseUrl } from "@/lib/server-api";
 import type { AnalyticsOverview, AnomalyType, ModelPerformance } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ const ANOMALY_LABELS: Record<AnomalyType, string> = {
 };
 
 export default async function DashboardPage() {
+  const api = apiFor(await getServerApiBaseUrl());
   const [overviewResult, performanceResult] = await Promise.allSettled([
     api.analyticsOverview(),
     api.modelPerformance(),

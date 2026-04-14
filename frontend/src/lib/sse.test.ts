@@ -73,3 +73,73 @@ test("streamInvestigation handles CRLF-delimited SSE frames", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("streamInvestigation defaults to NEXT_PUBLIC_API_BASE_URL", async () => {
+  const mod = await import("./sse");
+  const originalFetch = globalThis.fetch;
+  const previousPublicBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  let capturedUrl = "";
+
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://public.example:8000";
+
+  globalThis.fetch = (async (input) => {
+    capturedUrl = String(input);
+    return new Response(streamFromChunks([]), {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  }) as typeof fetch;
+
+  try {
+    await new Promise<void>((resolve) => {
+      mod.streamInvestigation("CLM-200", { onClose: resolve });
+    });
+
+    expect(capturedUrl).toBe(
+      "http://public.example:8000/api/claims/CLM-200/investigate",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.env.NEXT_PUBLIC_API_BASE_URL = previousPublicBaseUrl;
+  }
+});
+
+test("streamInvestigation defaults to a relative path in the browser when no base URL is configured", async () => {
+  const mod = await import("./sse");
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const previousApiBaseUrl = process.env.API_BASE_URL;
+  const previousPublicBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  let capturedUrl = "";
+
+  process.env.API_BASE_URL = undefined;
+  process.env.NEXT_PUBLIC_API_BASE_URL = undefined;
+  Object.defineProperty(globalThis, "window", {
+    value: {},
+    configurable: true,
+  });
+
+  globalThis.fetch = (async (input) => {
+    capturedUrl = String(input);
+    return new Response(streamFromChunks([]), {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  }) as typeof fetch;
+
+  try {
+    await new Promise<void>((resolve) => {
+      mod.streamInvestigation("CLM-200", { onClose: resolve });
+    });
+
+    expect(capturedUrl).toBe("/api/claims/CLM-200/investigate");
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.env.API_BASE_URL = previousApiBaseUrl;
+    process.env.NEXT_PUBLIC_API_BASE_URL = previousPublicBaseUrl;
+    Object.defineProperty(globalThis, "window", {
+      value: originalWindow,
+      configurable: true,
+    });
+  }
+});

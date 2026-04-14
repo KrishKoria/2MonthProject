@@ -14,9 +14,29 @@ import type {
 
 declare const process: { env: Record<string, string | undefined> };
 
-const DEFAULT_BASE_URL =
-  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_BASE_URL) ||
-  "http://localhost:8000";
+function normalizeBaseUrl(value: string | undefined) {
+  const normalized = value?.trim();
+  if (!normalized || normalized === "undefined" || normalized === "null") {
+    return undefined;
+  }
+  return normalized.replace(/\/+$/, "");
+}
+
+function resolveBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return normalizeBaseUrl(process.env?.NEXT_PUBLIC_API_BASE_URL) ?? "";
+  }
+
+  if (typeof process === "undefined") {
+    return "";
+  }
+
+  return (
+    normalizeBaseUrl(process.env?.API_BASE_URL) ??
+    normalizeBaseUrl(process.env?.NEXT_PUBLIC_API_BASE_URL) ??
+    ""
+  );
+}
 
 type KnownEventName = InvestigationEvent["event"];
 
@@ -109,10 +129,11 @@ function parseFrame(frame: string): InvestigationEvent | null {
 export function streamInvestigation(
   claimId: string,
   handlers: StreamHandlers,
-  baseUrl: string = DEFAULT_BASE_URL,
+  baseUrl?: string,
 ): AbortController {
   const controller = new AbortController();
-  const url = `${baseUrl}/api/claims/${encodeURIComponent(claimId)}/investigate`;
+  const resolvedBaseUrl = baseUrl ?? resolveBaseUrl();
+  const url = `${resolvedBaseUrl}/api/claims/${encodeURIComponent(claimId)}/investigate`;
 
   (async () => {
     try {

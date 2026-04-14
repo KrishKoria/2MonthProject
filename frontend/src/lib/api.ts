@@ -18,9 +18,29 @@ import type {
 
 declare const process: { env: Record<string, string | undefined> };
 
-const DEFAULT_BASE_URL =
-  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_BASE_URL) ||
-  "http://localhost:8000";
+function normalizeBaseUrl(value: string | undefined) {
+  const normalized = value?.trim();
+  if (!normalized || normalized === "undefined" || normalized === "null") {
+    return undefined;
+  }
+  return normalized.replace(/\/+$/, "");
+}
+
+function resolveBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return normalizeBaseUrl(process.env?.NEXT_PUBLIC_API_BASE_URL) ?? "";
+  }
+
+  if (typeof process === "undefined") {
+    return "";
+  }
+
+  return (
+    normalizeBaseUrl(process.env?.API_BASE_URL) ??
+    normalizeBaseUrl(process.env?.NEXT_PUBLIC_API_BASE_URL) ??
+    ""
+  );
+}
 
 export class ApiError extends Error {
   constructor(
@@ -57,9 +77,10 @@ function buildHeaders(init: RequestInit) {
 async function request<T>(
   path: string,
   init: RequestInit = {},
-  baseUrl: string = DEFAULT_BASE_URL,
+  baseUrl?: string,
 ): Promise<T> {
-  const url = `${baseUrl}${path}`;
+  const resolvedBaseUrl = baseUrl ?? resolveBaseUrl();
+  const url = `${resolvedBaseUrl}${path}`;
   const res = await fetch(url, {
     ...init,
     headers: buildHeaders(init),
@@ -115,50 +136,62 @@ export interface ClaimsQuery {
   sort_dir?: "asc" | "desc";
 }
 
-export const api = {
-  listClaims(query: ClaimsQuery = {}): Promise<ClaimsPage> {
-    return request<ClaimsPage>(`/api/claims${buildQuery(query)}`);
-  },
+function createApi(baseUrl?: string) {
+  return {
+    listClaims(query: ClaimsQuery = {}): Promise<ClaimsPage> {
+      return request<ClaimsPage>(`/api/claims${buildQuery(query)}`, undefined, baseUrl);
+    },
 
-  getClaim(claimId: string): Promise<ClaimDetail> {
-    return request<ClaimDetail>(`/api/claims/${encodeURIComponent(claimId)}`);
-  },
+    getClaim(claimId: string): Promise<ClaimDetail> {
+      return request<ClaimDetail>(`/api/claims/${encodeURIComponent(claimId)}`, undefined, baseUrl);
+    },
 
-  getInvestigation(claimId: string): Promise<Investigation | null> {
-    return request<Investigation | null>(
-      `/api/claims/${encodeURIComponent(claimId)}/investigation`,
-    );
-  },
+    getInvestigation(claimId: string): Promise<Investigation | null> {
+      return request<Investigation | null>(
+        `/api/claims/${encodeURIComponent(claimId)}/investigation`,
+        undefined,
+        baseUrl,
+      );
+    },
 
-  submitDecision(
-    claimId: string,
-    decision: DecisionKind,
-    notes?: string,
-  ): Promise<Investigation> {
-    return request<Investigation>(
-      `/api/claims/${encodeURIComponent(claimId)}/investigation`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ decision, notes }),
-      },
-    );
-  },
+    submitDecision(
+      claimId: string,
+      decision: DecisionKind,
+      notes?: string,
+    ): Promise<Investigation> {
+      return request<Investigation>(
+        `/api/claims/${encodeURIComponent(claimId)}/investigation`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ decision, notes }),
+        },
+        baseUrl,
+      );
+    },
 
-  analyticsOverview(): Promise<AnalyticsOverview> {
-    return request<AnalyticsOverview>(`/api/analytics/overview`);
-  },
+    analyticsOverview(): Promise<AnalyticsOverview> {
+      return request<AnalyticsOverview>(`/api/analytics/overview`, undefined, baseUrl);
+    },
 
-  modelPerformance(): Promise<ModelPerformance> {
-    return request<ModelPerformance>(`/api/analytics/model-performance`);
-  },
+    modelPerformance(): Promise<ModelPerformance> {
+      return request<ModelPerformance>(`/api/analytics/model-performance`, undefined, baseUrl);
+    },
 
-  ncciLookup(code1: string, code2: string, serviceDate: string): Promise<NCCIFinding> {
-    return request<NCCIFinding>(
-      `/api/ncci/${encodeURIComponent(code1)}/${encodeURIComponent(code2)}${buildQuery({
-        service_date: serviceDate,
-      })}`,
-    );
-  },
-};
+    ncciLookup(code1: string, code2: string, serviceDate: string): Promise<NCCIFinding> {
+      return request<NCCIFinding>(
+        `/api/ncci/${encodeURIComponent(code1)}/${encodeURIComponent(code2)}${buildQuery({
+          service_date: serviceDate,
+        })}`,
+        undefined,
+        baseUrl,
+      );
+    },
+  };
+}
+
+export const api = createApi();
+export function apiFor(baseUrl: string) {
+  return createApi(baseUrl);
+}
 
 export type { Claim, Investigation };

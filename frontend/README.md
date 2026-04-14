@@ -41,11 +41,13 @@ Start the app:
 bun run dev
 ```
 
-The frontend expects the backend API to be available at `http://localhost:8000` by default.
+Browser-side requests default to same-origin `/api/...` routes. For server-side rendering
+against a separate backend origin, set `API_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL`.
 
 To point it somewhere else, set:
 
 ```bash
+API_BASE_URL=http://your-api-host:8000
 NEXT_PUBLIC_API_BASE_URL=http://your-api-host:8000
 ```
 

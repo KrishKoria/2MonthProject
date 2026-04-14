@@ -1,6 +1,7 @@
 import { ClaimsExplorer } from "@/components/claims/ClaimsExplorer";
-import { api } from "@/lib/api";
+import { apiFor } from "@/lib/api";
 import { claimsQueryFromSearchParams, claimsQueryToSearchParams } from "@/lib/claims-query";
+import { getServerApiBaseUrl } from "@/lib/server-api";
 import type { ClaimListItem } from "@/lib/types";
 
 type ClaimsPageProps = {
@@ -8,6 +9,7 @@ type ClaimsPageProps = {
 };
 
 export default async function ClaimsPage({ searchParams }: ClaimsPageProps) {
+  const api = apiFor(await getServerApiBaseUrl());
   const query = claimsQueryFromSearchParams(await searchParams);
   let rows: ClaimListItem[] = [];
   let total = 0;
