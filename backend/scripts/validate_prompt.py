@@ -41,12 +41,30 @@ from app.orchestrator.triage import run_triage
 from app.utils.collections import ensure_list, has_items
 
 REQUIRED_FLAG_KEYS = {"upcoding", "ncci_violation", "duplicate"}
+REQUIRED_RISK_SCORE_COLUMNS = {
+    "claim_id",
+    "xgboost_score",
+    "xgboost_raw_margin",
+    "shap_values",
+    "shap_base_value",
+    "rules_flags",
+    "risk_band",
+}
 VALIDATION_OUTPUT_PATH = settings.scores_dir / "rationale_validation_results.json"
 QUALITY_OUTPUT_PATH = settings.scores_dir / "rationale_eval_results.json"
 
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _assert_risk_score_schema(risk_scores_df: pd.DataFrame) -> None:
+    missing = sorted(REQUIRED_RISK_SCORE_COLUMNS.difference(risk_scores_df.columns))
+    if missing:
+        raise RuntimeError(
+            "risk_scores.parquet is missing required columns: "
+            f"{missing}. Rerun `uv run python -m scripts.score_claims` to regenerate scores."
+        )
 
 
 def _is_flagged(score_row: pd.Series) -> bool:
@@ -142,7 +160,17 @@ def _initial_state(store: DataStore, claim_id: str) -> dict[str, Any]:
         "claim_id": claim_id,
         "claim_data": claim,
         "xgboost_risk_score": float(score.get("xgboost_score") or 0.0),
+        "xgboost_raw_margin": (
+            float(score["xgboost_raw_margin"])
+            if score.get("xgboost_raw_margin") is not None
+            else None
+        ),
         "shap_values": dict(score.get("shap_values") or {}),
+        "shap_base_value": (
+            float(score["shap_base_value"])
+            if score.get("shap_base_value") is not None
+            else None
+        ),
         "rules_flags": ensure_list(score.get("rules_flags")),
         "anomaly_flags": {},
         "evidence_tools_to_use": [],
@@ -210,6 +238,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 async def _run(limit: int) -> int:
     store = load_data_store()
+    _assert_risk_score_schema(store.risk_scores_df)
     claim_ids = select_representative_claim_ids(store.claims_df, store.risk_scores_df, limit=limit)
     if not claim_ids:
         raise RuntimeError("No representative flagged claims available for validation")

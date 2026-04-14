@@ -58,7 +58,16 @@ def main():
     logger.info("Scored %d claims", len(scores_df))
 
     # Validate output schema
-    required_cols = ["claim_id", "xgboost_score", "shap_values", "rules_flags", "risk_band", "scored_at"]
+    required_cols = [
+        "claim_id",
+        "xgboost_score",
+        "xgboost_raw_margin",
+        "shap_values",
+        "shap_base_value",
+        "rules_flags",
+        "risk_band",
+        "scored_at",
+    ]
     missing = [c for c in required_cols if c not in scores_df.columns]
     if missing:
         logger.error("Missing required columns: %s", missing)

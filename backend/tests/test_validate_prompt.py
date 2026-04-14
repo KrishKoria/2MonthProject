@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
+from app.data.loader import DataStore
 from scripts.validate_prompt import (
+    _assert_risk_score_schema,
+    _initial_state,
     score_rationale_usefulness,
     select_representative_claim_ids,
     validate_rationale_payload,
@@ -120,3 +124,54 @@ def test_score_rationale_usefulness_applies_defined_rubric():
         retrieved_citations=citations,
     )
     assert not_useful == "not_useful"
+
+
+def test_initial_state_preserves_shap_invariant_inputs_from_risk_scores():
+    store = DataStore(
+        claims_df=pd.DataFrame(
+            [
+                {
+                    "claim_id": "CLM-1",
+                    "anomaly_type": "upcoding",
+                }
+            ]
+        ),
+        risk_scores_df=pd.DataFrame(
+            [
+                {
+                    "claim_id": "CLM-1",
+                    "xgboost_score": 91.2,
+                    "xgboost_raw_margin": 1.37,
+                    "shap_values": {"charge_amount": 0.42},
+                    "shap_base_value": 0.19,
+                    "rules_flags": ["high_charge"],
+                    "risk_band": "high",
+                }
+            ]
+        ),
+    )
+
+    state = _initial_state(store, "CLM-1")
+
+    assert state["xgboost_risk_score"] == 91.2
+    assert state["xgboost_raw_margin"] == 1.37
+    assert state["shap_values"] == {"charge_amount": 0.42}
+    assert state["shap_base_value"] == 0.19
+    assert state["rules_flags"] == ["high_charge"]
+
+
+def test_assert_risk_score_schema_raises_for_missing_shap_invariant_columns():
+    risk_scores_df = pd.DataFrame(
+        [
+            {
+                "claim_id": "CLM-1",
+                "xgboost_score": 91.2,
+                "shap_values": {"charge_amount": 0.42},
+                "rules_flags": ["high_charge"],
+                "risk_band": "high",
+            }
+        ]
+    )
+
+    with pytest.raises(RuntimeError, match="missing required columns"):
+        _assert_risk_score_schema(risk_scores_df)
