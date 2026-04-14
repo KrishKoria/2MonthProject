@@ -5,12 +5,20 @@ from typing import Annotated, Any
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
+from starlette.concurrency import run_in_threadpool
 
 from app.api.dependencies import get_data_store
 from app.data.loader import DataStore
 from app.utils.collections import ensure_list
 
 router = APIRouter(prefix="/api/claims", tags=["claims"])
+
+_SORT_COLUMNS = {
+    "risk_score": "xgboost_score",
+    "service_date": "service_date",
+    "claim_receipt_date": "claim_receipt_date",
+    "charge_amount": "charge_amount",
+}
 
 
 def _envelope(data: Any) -> dict:
@@ -68,23 +76,28 @@ def _merge_claim_with_score(claim: dict, score: dict | None) -> dict:
     return out
 
 
-@router.get("")
-async def list_claims(
-    store: Annotated[DataStore, Depends(get_data_store)],
-    status: str | None = None,
-    risk_band: str | None = None,
-    anomaly_type: str | None = None,
-    provider_id: str | None = None,
-    date_from: date | None = None,
-    date_to: date | None = None,
-    page: int = Query(1, ge=1),
-    page_size: int = Query(25, ge=1, le=100),
-    sort_by: str = "risk_score",
-    sort_dir: str = "desc",
+def _list_claims_payload(
+    store: DataStore,
+    *,
+    status: str | None,
+    risk_band: str | None,
+    anomaly_type: str | None,
+    provider_id: str | None,
+    date_from: date | None,
+    date_to: date | None,
+    page: int,
+    page_size: int,
+    sort_by: str,
+    sort_dir: str,
 ) -> dict:
+    if sort_by not in _SORT_COLUMNS:
+        raise ValueError(f"Unsupported sort_by: {sort_by}")
+    if sort_dir not in {"asc", "desc"}:
+        raise ValueError(f"Unsupported sort_dir: {sort_dir}")
+
     claims_df = store.claims_df
     if claims_df.empty:
-        return _envelope({"claims": [], "total": 0, "page": page, "page_size": page_size})
+        return {"claims": [], "total": 0, "page": page, "page_size": page_size}
 
     df = claims_df.copy()
 
@@ -113,13 +126,8 @@ async def list_claims(
         merged = merged[merged["risk_band"] == risk_band]
 
     ascending = sort_dir == "asc"
-    sort_col = {
-        "risk_score": "xgboost_score",
-        "service_date": "service_date",
-        "claim_receipt_date": "claim_receipt_date",
-    }.get(sort_by, "xgboost_score")
-    if sort_col in merged.columns:
-        merged = merged.sort_values(sort_col, ascending=ascending, na_position="last")
+    sort_col = _SORT_COLUMNS[sort_by]
+    merged = merged.sort_values(sort_col, ascending=ascending, na_position="last")
 
     total = len(merged)
     start = (page - 1) * page_size
@@ -139,12 +147,43 @@ async def list_claims(
             }
         claims.append(_merge_claim_with_score(claim, score))
 
-    return _envelope({
+    return {
         "claims": claims,
         "total": int(total),
         "page": page,
         "page_size": page_size,
-    })
+    }
+
+
+@router.get("")
+async def list_claims(
+    store: Annotated[DataStore, Depends(get_data_store)],
+    status: str | None = None,
+    risk_band: str | None = None,
+    anomaly_type: str | None = None,
+    provider_id: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    sort_by: str = "risk_score",
+    sort_dir: str = "desc",
+) -> dict:
+    payload = await run_in_threadpool(
+        _list_claims_payload,
+        store,
+        status=status,
+        risk_band=risk_band,
+        anomaly_type=anomaly_type,
+        provider_id=provider_id,
+        date_from=date_from,
+        date_to=date_to,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+    return _envelope(payload)
 
 
 @router.get("/{claim_id}")

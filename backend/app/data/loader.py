@@ -1,11 +1,13 @@
 """Parquet data loader — loads all data at FastAPI startup (constitution IV)."""
 
+import os
 import json
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+from threading import RLock
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -27,6 +29,8 @@ class DataStore:
     ncci_edits_df: pd.DataFrame = field(default_factory=pd.DataFrame)
     model_metadata: dict = field(default_factory=dict)
     investigations: dict[str, Investigation] = field(default_factory=dict)
+    _claims_lock: RLock = field(default_factory=RLock, init=False, repr=False)
+    _investigations_lock: RLock = field(default_factory=RLock, init=False, repr=False)
 
     def get_claim(self, claim_id: str) -> dict | None:
         """Get a single claim by ID."""
@@ -48,18 +52,20 @@ class DataStore:
 
     def update_claim_status(self, claim_id: str, new_status: str) -> None:
         """Update claim status with state machine validation."""
-        mask = self.claims_df["claim_id"] == claim_id
-        if not mask.any():
-            raise ValueError(f"Claim {claim_id} not found")
+        with self._claims_lock:
+            mask = self.claims_df["claim_id"] == claim_id
+            if not mask.any():
+                raise ValueError(f"Claim {claim_id} not found")
 
-        current_status = self.claims_df.loc[mask, "claim_status"].iloc[0]
-        _validate_status_transition(current_status, new_status)
-        self.claims_df.loc[mask, "claim_status"] = new_status
+            current_status = self.claims_df.loc[mask, "claim_status"].iloc[0]
+            _validate_status_transition(current_status, new_status)
+            self.claims_df.loc[mask, "claim_status"] = new_status
 
     def save_investigation(self, investigation: Investigation) -> None:
         """Persist investigation to in-memory store and write to Parquet."""
-        self.investigations[investigation.claim_id] = investigation
-        self._persist_investigations()
+        with self._investigations_lock:
+            self.investigations[investigation.claim_id] = investigation
+            self._persist_investigations()
 
     def _persist_investigations(self) -> None:
         """Serialize investigations to Parquet for restart survival."""
@@ -72,7 +78,9 @@ class DataStore:
         df = pd.DataFrame(records)
         output_path = settings.scores_dir / "investigations.parquet"
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_parquet(output_path, index=False)
+        temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+        df.to_parquet(temp_path, index=False)
+        os.replace(temp_path, output_path)
         logger.info("Persisted %d investigations to %s", len(records), output_path)
 
 
@@ -114,6 +122,15 @@ def _load_csv_safe(path: Path) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _normalize_parquet_scalar(value):
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        return value
+    return value
+
+
 def _load_investigations(path: Path) -> dict[str, Investigation]:
     """Load persisted investigations from Parquet."""
     if not path.exists():
@@ -121,7 +138,11 @@ def _load_investigations(path: Path) -> dict[str, Investigation]:
     df = pd.read_parquet(path)
     investigations = {}
     for _, row in df.iterrows():
-        inv = Investigation.model_validate(row.to_dict())
+        record = {
+            key: _normalize_parquet_scalar(value)
+            for key, value in row.to_dict().items()
+        }
+        inv = Investigation.model_validate(record)
         investigations[inv.claim_id] = inv
     logger.info("Loaded %d investigations from %s", len(investigations), path.name)
     return investigations
@@ -158,6 +179,11 @@ async def lifespan(app: object) -> AsyncGenerator[dict, None]:
     """FastAPI lifespan: load all Parquet data at startup."""
     logger.info("Loading data store...")
     store = load_data_store()
+    openai_client = None
+    if settings.OPENAI_API_KEY:
+        from openai import AsyncOpenAI
+
+        openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
     logger.info("Data store ready.")
-    yield {"data_store": store}
+    yield {"data_store": store, "openai_client": openai_client}
     logger.info("Shutting down data store.")

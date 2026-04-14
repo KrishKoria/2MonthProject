@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
+from starlette.concurrency import run_in_threadpool
 
 from app.api.dependencies import get_data_store
 from app.data.loader import DataStore
@@ -22,16 +23,13 @@ def _envelope(data: Any) -> dict:
     }
 
 
-@router.get("/overview")
-async def overview(
-    store: Annotated[DataStore, Depends(get_data_store)],
-) -> dict:
+def _overview_payload(store: DataStore) -> dict:
     claims_df = store.claims_df
     scores_df = store.risk_scores_df
     total_claims = int(len(claims_df))
 
     if scores_df.empty:
-        return _envelope({
+        return {
             "total_claims": total_claims,
             "flagged_count": 0,
             "high_risk_count": 0,
@@ -41,7 +39,7 @@ async def overview(
             "rules_baseline_flagged": 0,
             "ml_only_flagged": 0,
             "combined_flagged": 0,
-        })
+        }
 
     high_risk_mask = scores_df["risk_band"] == "high"
     high_risk_count = int(high_risk_mask.sum())
@@ -62,7 +60,7 @@ async def overview(
     investigations = store.investigations
     inv_rate = float(len(investigations)) / total_claims if total_claims else 0.0
 
-    return _envelope({
+    return {
         "total_claims": total_claims,
         "flagged_count": flagged_count,
         "high_risk_count": high_risk_count,
@@ -72,7 +70,14 @@ async def overview(
         "rules_baseline_flagged": int(rules_flagged_mask.sum()),
         "ml_only_flagged": int((ml_flagged_mask & ~rules_flagged_mask).sum()),
         "combined_flagged": int(combined_mask.sum()),
-    })
+    }
+
+
+@router.get("/overview")
+async def overview(
+    store: Annotated[DataStore, Depends(get_data_store)],
+) -> dict:
+    return _envelope(await run_in_threadpool(_overview_payload, store))
 
 
 @router.get("/model-performance")

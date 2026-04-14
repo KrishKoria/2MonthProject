@@ -62,4 +62,7 @@ coverage/
 .claude/
 .agents/
 
+_tmp/
+tmp/
+
 *.pdf
