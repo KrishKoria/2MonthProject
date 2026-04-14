@@ -4,6 +4,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+import numpy as np
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
@@ -38,8 +39,8 @@ def _make_store() -> DataStore:
             "provider_id": "PRV-001",
             "service_date": date(2026, 3, 1),
             "claim_receipt_date": date(2026, 3, 5),
-            "procedure_codes": ["99213"],
-            "diagnosis_codes": ["M17.11"],
+            "procedure_codes": np.array(["99213"]),
+            "diagnosis_codes": np.array(["M17.11"]),
             "modifiers": [],
             "charge_amount": 150.0,
             "allowed_amount": 100.0,
@@ -54,8 +55,8 @@ def _make_store() -> DataStore:
             "provider_id": "PRV-002",
             "service_date": date(2026, 3, 10),
             "claim_receipt_date": date(2026, 3, 15),
-            "procedure_codes": ["27447"],
-            "diagnosis_codes": ["M17.11"],
+            "procedure_codes": np.array(["27447"]),
+            "diagnosis_codes": np.array(["M17.11"]),
             "modifiers": [],
             "charge_amount": 8450.0,
             "allowed_amount": 3200.0,
@@ -70,8 +71,8 @@ def _make_store() -> DataStore:
             "provider_id": "PRV-001",
             "service_date": date(2026, 2, 1),
             "claim_receipt_date": date(2026, 2, 10),
-            "procedure_codes": ["99214"],
-            "diagnosis_codes": ["E11.9"],
+            "procedure_codes": np.array(["99214"]),
+            "diagnosis_codes": np.array(["E11.9"]),
             "modifiers": [],
             "charge_amount": 220.0,
             "allowed_amount": 180.0,
@@ -158,6 +159,30 @@ def test_list_claims_filters_by_provider(client):
 
 def test_list_claims_filters_by_claim_id(client):
     res = client.get("/api/claims?claim_id=CLM-0002")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["total"] == 1
+    assert data["claims"][0]["claim_id"] == "CLM-0002"
+
+
+def test_list_claims_search_matches_claim_id_fuzzily(client):
+    res = client.get("/api/claims?search=0002")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["total"] == 1
+    assert data["claims"][0]["claim_id"] == "CLM-0002"
+
+
+def test_list_claims_search_matches_provider_id(client):
+    res = client.get("/api/claims?search=PRV-001")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["total"] == 2
+    assert {claim["claim_id"] for claim in data["claims"]} == {"CLM-0001", "CLM-0003"}
+
+
+def test_list_claims_search_matches_procedure_code_from_numpy_array(client):
+    res = client.get("/api/claims?search=27447")
     assert res.status_code == 200
     data = res.json()["data"]
     assert data["total"] == 1

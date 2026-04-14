@@ -126,11 +126,10 @@ function buildQuery(params: Record<string, QueryValue> | ClaimsQuery): string {
 export interface ClaimsQuery {
   page?: number;
   page_size?: number;
-  claim_id?: string;
+  search?: string;
   status?: ClaimStatus;
   risk_band?: RiskBand;
   anomaly_type?: AnomalyType;
-  provider_id?: string;
   date_from?: string;
   date_to?: string;
   sort_by?: "risk_score" | "service_date" | "claim_receipt_date" | "charge_amount";

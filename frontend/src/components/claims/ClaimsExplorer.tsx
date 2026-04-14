@@ -216,20 +216,20 @@ export function ClaimsExplorer({
         </CardHeader>
         <CardContent>
           <FieldGroup className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Field>
-              <FieldLabel htmlFor="claim_id">Claim ID</FieldLabel>
+            <Field className="md:col-span-2 xl:col-span-2">
+              <FieldLabel htmlFor="search">Search claims</FieldLabel>
               <InputGroup>
                 <InputGroupAddon>
                   <Search />
                 </InputGroupAddon>
                 <InputGroupInput
-                  id="claim_id"
-                  placeholder="CLM-…"
-                  value={draft.claim_id ?? ""}
+                  id="search"
+                  placeholder="Claim, provider, member, CPT, ICD..."
+                  value={draft.search ?? ""}
                   onChange={(event) =>
                     setDraft((query) => ({
                       ...query,
-                      claim_id: event.target.value || undefined,
+                      search: event.target.value || undefined,
                     }))
                   }
                   onKeyDown={(event) => {
@@ -313,32 +313,6 @@ export function ClaimsExplorer({
                   </SelectGroup>
                 </SelectContent>
               </Select>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="provider">Provider ID</FieldLabel>
-              <InputGroup>
-                <InputGroupAddon>
-                  <Search />
-                </InputGroupAddon>
-                <InputGroupInput
-                  id="provider"
-                  placeholder="PRV-…"
-                  value={draft.provider_id ?? ""}
-                  onChange={(event) =>
-                    setDraft((query) => ({
-                      ...query,
-                      provider_id: event.target.value || undefined,
-                    }))
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      applyDraft();
-                    }
-                  }}
-                />
-              </InputGroup>
             </Field>
 
             <Field>

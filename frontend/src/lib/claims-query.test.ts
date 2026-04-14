@@ -5,10 +5,9 @@ describe("claims query helpers", () => {
     const mod = await import("./claims-query");
 
     const query = mod.claimsQueryFromSearchParams({
-      claim_id: "CLM-4242",
+      search: "CLM-4242",
       risk_band: "high",
       anomaly_type: "duplicate",
-      provider_id: "PRV-771",
       page: "2",
       page_size: "50",
       sort_by: "charge_amount",
@@ -18,10 +17,9 @@ describe("claims query helpers", () => {
     });
 
     expect(query).toEqual({
-      claim_id: "CLM-4242",
+      search: "CLM-4242",
       risk_band: "high",
       anomaly_type: "duplicate",
-      provider_id: "PRV-771",
       page: 2,
       page_size: 50,
       sort_by: "charge_amount",
@@ -52,6 +50,34 @@ describe("claims query helpers", () => {
     });
   });
 
+  test("maps legacy claim/provider params into the unified search box", async () => {
+    const mod = await import("./claims-query");
+
+    expect(
+      mod.claimsQueryFromSearchParams({
+        claim_id: "CLM-0002",
+      }),
+    ).toEqual({
+      page: 1,
+      page_size: 25,
+      sort_by: "risk_score",
+      sort_dir: "desc",
+      search: "CLM-0002",
+    });
+
+    expect(
+      mod.claimsQueryFromSearchParams({
+        provider_id: "PRV-001",
+      }),
+    ).toEqual({
+      page: 1,
+      page_size: 25,
+      sort_by: "risk_score",
+      sort_dir: "desc",
+      search: "PRV-001",
+    });
+  });
+
   test("serializes only non-default values into canonical URL params", async () => {
     const mod = await import("./claims-query");
 
@@ -61,13 +87,12 @@ describe("claims query helpers", () => {
         page_size: 25,
         sort_by: "risk_score",
         sort_dir: "desc",
-        claim_id: "CLM-100",
+        search: "CLM-100",
         risk_band: "high",
-        provider_id: "",
         date_from: undefined,
       })
       .toString();
 
-    expect(params).toBe("claim_id=CLM-100&risk_band=high");
+    expect(params).toBe("search=CLM-100&risk_band=high");
   });
 });

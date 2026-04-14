@@ -1,5 +1,6 @@
 """Claims list and detail API routes."""
 
+from collections.abc import Iterable
 from datetime import date, datetime, timezone
 from typing import Annotated, Any
 
@@ -76,9 +77,31 @@ def _merge_claim_with_score(claim: dict, score: dict | None) -> dict:
     return out
 
 
+def _field_contains(value: Any, search_term: str) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return search_term in value.lower()
+    if isinstance(value, (bytes, bytearray)):
+        return search_term in value.decode("utf-8", errors="ignore").lower()
+    if isinstance(value, dict):
+        return any(_field_contains(item, search_term) for item in value.values())
+    if hasattr(value, "tolist") and not isinstance(value, dict):
+        value = value.tolist()
+    if isinstance(value, Iterable):
+        return any(_field_contains(item, search_term) for item in value)
+    try:
+        if bool(pd.isna(value)):
+            return False
+    except (TypeError, ValueError):
+        pass
+    return search_term in str(value).lower()
+
+
 def _list_claims_payload(
     store: DataStore,
     *,
+    search: str | None,
     claim_id: str | None,
     status: str | None,
     risk_band: str | None,
@@ -101,6 +124,18 @@ def _list_claims_payload(
         return {"claims": [], "total": 0, "page": page, "page_size": page_size}
 
     df = claims_df.copy()
+
+    if search:
+        search_term = search.strip().lower()
+        if search_term:
+            mask = (
+                df["claim_id"].map(lambda value: _field_contains(value, search_term))
+                | df["provider_id"].map(lambda value: _field_contains(value, search_term))
+                | df["member_id"].map(lambda value: _field_contains(value, search_term))
+                | df["procedure_codes"].map(lambda value: _field_contains(value, search_term))
+                | df["diagnosis_codes"].map(lambda value: _field_contains(value, search_term))
+            )
+            df = df[mask]
 
     if claim_id:
         df = df[df["claim_id"] == claim_id]
@@ -161,6 +196,7 @@ def _list_claims_payload(
 @router.get("")
 async def list_claims(
     store: Annotated[DataStore, Depends(get_data_store)],
+    search: str | None = None,
     claim_id: str | None = None,
     status: str | None = None,
     risk_band: str | None = None,
@@ -176,6 +212,7 @@ async def list_claims(
     payload = await run_in_threadpool(
         _list_claims_payload,
         store,
+        search=search,
         claim_id=claim_id,
         status=status,
         risk_band=risk_band,

@@ -1,13 +1,14 @@
 import { expect, test } from "bun:test";
 
 test("next config proxies API requests to the backend in local development", async () => {
-  const previousApiBaseUrl = process.env.API_BASE_URL;
-  const previousPublicBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const previousNodeEnv = process.env.NODE_ENV;
+  const env = process.env as Record<string, string | undefined>;
+  const previousApiBaseUrl = env.API_BASE_URL;
+  const previousPublicBaseUrl = env.NEXT_PUBLIC_API_BASE_URL;
+  const previousNodeEnv = env.NODE_ENV;
 
-  process.env.API_BASE_URL = undefined;
-  process.env.NEXT_PUBLIC_API_BASE_URL = undefined;
-  process.env.NODE_ENV = "development";
+  env.API_BASE_URL = undefined;
+  env.NEXT_PUBLIC_API_BASE_URL = undefined;
+  env.NODE_ENV = "development";
 
   try {
     const { default: nextConfig } = await import("./next.config");
@@ -20,8 +21,8 @@ test("next config proxies API requests to the backend in local development", asy
       },
     ]);
   } finally {
-    process.env.API_BASE_URL = previousApiBaseUrl;
-    process.env.NEXT_PUBLIC_API_BASE_URL = previousPublicBaseUrl;
-    process.env.NODE_ENV = previousNodeEnv;
+    env.API_BASE_URL = previousApiBaseUrl;
+    env.NEXT_PUBLIC_API_BASE_URL = previousPublicBaseUrl;
+    env.NODE_ENV = previousNodeEnv;
   }
 });
