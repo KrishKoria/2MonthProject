@@ -57,7 +57,8 @@ Environment variables are loaded from `backend/.env` regardless of the shell wor
 | `DATA_DIR` | `<repo>/data` | Root directory for processed claims, scores, NCCI assets, policy docs, and ChromaDB artifacts. |
 | `CHROMA_DIR` | `<repo>/data/chroma` | Vector store location for RAG evidence retrieval. |
 | `LLM_MODEL` | `gpt-4o` | Model used by the rationale generation pipeline. |
-| `RISK_THRESHOLD` | `40` | Backend threshold used by risk logic. |
+| `RISK_THRESHOLD` | `40` | Medium-risk threshold used by scoring and triage logic. |
+| `HIGH_RISK_THRESHOLD` | `70` | High-risk threshold used by scoring and triage logic. |
 | `LOG_LEVEL` | `INFO` | Python logging level. |
 | `CORS_ALLOW_ORIGINS` | `http://localhost:3000` | Comma-separated allowed browser origins. |
 | `API_HOST` | `127.0.0.1` | Host bound by `uv run app/main.py`. |

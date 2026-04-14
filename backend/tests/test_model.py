@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 from app.ml import pipeline as pipeline_module
+from app.config import settings
 from app.ml.explainer import SHAPExplainer
 from app.ml.model import FEATURE_COLUMNS, evaluate_model, grouped_temporal_split, train_xgboost
 from app.ml.pipeline import assign_risk_band, batch_score
@@ -153,9 +154,15 @@ def test_batch_score_attaches_shap_rules_and_risk_bands(monkeypatch):
 
     class _FakeModel:
         def predict(self, dmatrix, **kwargs):
+            if kwargs.get("output_margin"):
+                return np.array([1.25, -0.35])
             return np.array([0.91, 0.12])
 
     class _FakeExplainer:
+        @property
+        def base_value(self):
+            return 0.4
+
         def __init__(self, model, feature_names):
             self.feature_names = feature_names
 
@@ -183,6 +190,18 @@ def test_batch_score_attaches_shap_rules_and_risk_bands(monkeypatch):
     assert list(scored["risk_band"]) == ["high", "low"]
     assert scored.iloc[0]["rules_flags"] == ["charge_outlier"]
     assert scored.iloc[0]["shap_values"]["charge_amount"] == 0.51
+    assert scored.iloc[0]["xgboost_raw_margin"] == 1.25
+    assert scored.iloc[0]["shap_base_value"] == 0.4
     assert assign_risk_band(70.0) == "high"
     assert assign_risk_band(40.0) == "medium"
     assert assign_risk_band(39.99) == "low"
+
+
+def test_assign_risk_band_uses_configured_thresholds(monkeypatch):
+    monkeypatch.setattr(settings, "HIGH_RISK_THRESHOLD", 85.0, raising=False)
+    monkeypatch.setattr(settings, "RISK_THRESHOLD", 55.0, raising=False)
+
+    assert assign_risk_band(85.0) == "high"
+    assert assign_risk_band(84.99) == "medium"
+    assert assign_risk_band(55.0) == "medium"
+    assert assign_risk_band(54.99) == "low"

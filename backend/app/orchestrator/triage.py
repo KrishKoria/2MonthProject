@@ -1,8 +1,8 @@
 """Deterministic triage node (constitution I, VII).
 
 Classifies the primary anomaly type, evaluates all 3 anomaly flags with explicit
-`detected | not_applicable | insufficient_data` values, selects evidence tools,
-and sets priority. No I/O, no LLM — must complete in <100ms.
+`detected | not_applicable | insufficient_data` values, records the four-source
+evidence plan, and sets priority. No I/O, no LLM — must complete in <100ms.
 """
 
 from __future__ import annotations
@@ -10,12 +10,10 @@ from __future__ import annotations
 import logging
 import time
 
+from app.config import settings
 from app.utils.collections import ensure_list
 
 logger = logging.getLogger(__name__)
-
-HIGH_RISK_THRESHOLD = 70.0
-MEDIUM_RISK_THRESHOLD = 40.0
 
 TOOLS_FOR_ANOMALY: dict[str, list[str]] = {
     "upcoding": ["rag_retrieval", "provider_history"],
@@ -39,7 +37,7 @@ def run_triage(state: dict) -> dict:
     flags: dict[str, str] = {}
 
     # Upcoding — always applicable; detected if charge_outlier flag or high-risk score
-    if "charge_outlier" in rules_flags or score >= HIGH_RISK_THRESHOLD:
+    if "charge_outlier" in rules_flags or score >= settings.HIGH_RISK_THRESHOLD:
         flags["upcoding"] = "detected"
     else:
         flags["upcoding"] = "insufficient_data"
@@ -65,25 +63,19 @@ def run_triage(state: dict) -> dict:
             primary = anomaly
             break
 
-    # Evidence tools — union across detected flags; always include rag_retrieval;
-    # when nothing detected, cast a wide net so evidence node can still produce context.
-    tools_set: set[str] = set()
-    for anomaly, status in flags.items():
-        if status == "detected":
-            tools_set.update(TOOLS_FOR_ANOMALY.get(anomaly, []))
-    tools_set.add("rag_retrieval")
-    if primary is None:
-        tools_set.update(("provider_history", "duplicate_search"))
-    evidence_tools_to_use = [t for t in _TOOL_ORDER if t in tools_set]
+    # Evidence node always attempts all four deterministic sources. Keep the
+    # triage payload aligned with that runtime behavior so downstream consumers
+    # do not interpret this field as a narrower selection.
+    evidence_tools_to_use = list(_TOOL_ORDER)
 
     # Priority — high at/over HIGH_RISK_THRESHOLD or any detected flag with score ≥ med;
     # otherwise medium above MEDIUM_RISK_THRESHOLD, else low.
     detected_any = any(v == "detected" for v in flags.values())
-    if score >= HIGH_RISK_THRESHOLD:
+    if score >= settings.HIGH_RISK_THRESHOLD:
         priority = "high"
-    elif detected_any and score >= MEDIUM_RISK_THRESHOLD:
+    elif detected_any and score >= settings.RISK_THRESHOLD:
         priority = "high"
-    elif score >= MEDIUM_RISK_THRESHOLD or detected_any:
+    elif score >= settings.RISK_THRESHOLD or detected_any:
         priority = "medium"
     else:
         priority = "low"

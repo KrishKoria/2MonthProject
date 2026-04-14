@@ -17,7 +17,9 @@ class Settings(BaseSettings):
     DATA_DIR: Path = _PROJECT_ROOT / "data"
     CHROMA_DIR: Path = _PROJECT_ROOT / "data" / "chroma"
     LLM_MODEL: str = "gpt-4o"
+    LLM_TIMEOUT_SECONDS: float = 15.0
     RISK_THRESHOLD: float = 40.0
+    HIGH_RISK_THRESHOLD: float = 70.0
     LOG_LEVEL: str = "INFO"
     CORS_ALLOW_ORIGINS: str = "http://localhost:3000"
     API_HOST: str = "127.0.0.1"

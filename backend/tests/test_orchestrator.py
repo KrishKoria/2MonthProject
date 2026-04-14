@@ -11,6 +11,7 @@ import pytest
 
 from app.data.loader import DataStore
 from app.data.schemas import EvidenceEnvelope, PolicyCitation, SourceRecord
+from app.config import settings
 from app.orchestrator import evidence as evidence_module
 from app.orchestrator import graph as graph_module
 from app.orchestrator import rationale as rationale_module
@@ -120,10 +121,28 @@ def test_run_triage_marks_ncci_not_applicable_and_widens_tool_selection():
     assert result["anomaly_flags"]["ncci_violation"] == "not_applicable"
     assert result["priority"] == "low"
     assert result["evidence_tools_to_use"] == [
+        "ncci_lookup",
         "rag_retrieval",
         "provider_history",
         "duplicate_search",
     ]
+
+
+def test_run_triage_uses_configured_thresholds(monkeypatch):
+    monkeypatch.setattr(settings, "HIGH_RISK_THRESHOLD", 85.0, raising=False)
+    monkeypatch.setattr(settings, "RISK_THRESHOLD", 55.0, raising=False)
+
+    result = run_triage(
+        {
+            "claim_id": "CLM-1000",
+            "claim_data": _claim(procedure_codes=["99213"]),
+            "rules_flags": [],
+            "xgboost_risk_score": 60.0,
+        }
+    )
+
+    assert result["priority"] == "medium"
+    assert result["anomaly_flags"]["upcoding"] == "insufficient_data"
 
 
 def test_ncci_lookup_handles_conflict_no_codes_and_engine_error():
@@ -380,6 +399,100 @@ async def test_stream_rationale_handles_llm_exception():
 
     assert events[-1]["type"] == "error"
     assert events[-1]["message"].startswith("llm_error:")
+
+
+@pytest.mark.asyncio
+async def test_stream_rationale_rejects_detected_flags_without_explanations():
+    payload = {
+        "summary": "The model flagged upcoding.",
+        "supporting_evidence": ["Charge ratio is elevated."],
+        "policy_citations": [],
+        "anomaly_flags_addressed": {
+            "upcoding": None,
+            "ncci_violation": None,
+            "duplicate": "Not enough overlap to confirm a duplicate.",
+        },
+        "recommended_action": "Refer for manual review.",
+        "confidence": 0.7,
+        "review_needed": True,
+    }
+    client = _fake_client([json.dumps(payload)])
+
+    events = [
+        event async for event in rationale_module.stream_rationale(
+            _rationale_state(),
+            client=client,
+            model="fake-model",
+        )
+    ]
+
+    error = next(event for event in events if event["type"] == "error")
+    assert error["message"].startswith("missing_detected_flag_explanations:")
+
+
+@pytest.mark.asyncio
+async def test_stream_rationale_checks_margin_space_shap_invariant_before_llm():
+    payload = {
+        "summary": "Should never reach the LLM.",
+        "supporting_evidence": ["placeholder"],
+        "policy_citations": [],
+        "anomaly_flags_addressed": {
+            "upcoding": "addressed",
+            "ncci_violation": None,
+            "duplicate": None,
+        },
+        "recommended_action": "Refer for review.",
+        "confidence": 0.5,
+        "review_needed": True,
+    }
+    called = {"create": 0}
+
+    class _Completions:
+        async def create(self, **kwargs):
+            called["create"] += 1
+            return _FakeStream([json.dumps(payload)])
+
+    client = SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
+    state = _rationale_state() | {
+        "shap_values": {"charge_amount": 0.9},
+        "xgboost_raw_margin": 0.1,
+        "shap_base_value": 0.0,
+    }
+    events = [
+        event async for event in rationale_module.stream_rationale(
+            state,
+            client=client,
+            model="fake-model",
+        )
+    ]
+
+    assert called["create"] == 0
+    assert len(events) == 1
+    assert events[0]["type"] == "error"
+    assert events[0]["message"].startswith("SHAP invariant violated:")
+
+
+@pytest.mark.asyncio
+async def test_stream_rationale_sets_timeout_and_surfaces_timeout_error():
+    seen: dict[str, object] = {}
+
+    class _Completions:
+        async def create(self, **kwargs):
+            seen["timeout"] = kwargs.get("timeout")
+            raise TimeoutError("upstream timed out")
+
+    client = SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
+    events = [
+        event async for event in rationale_module.stream_rationale(
+            _rationale_state(),
+            client=client,
+            model="fake-model",
+        )
+    ]
+
+    assert seen["timeout"] == rationale_module.settings.LLM_TIMEOUT_SECONDS
+    assert events[-1]["type"] == "error"
+    assert events[-1]["message"].startswith("llm_timeout:")
 
 
 @pytest.mark.asyncio
