@@ -156,6 +156,14 @@ def test_list_claims_filters_by_provider(client):
     assert data["total"] == 2
 
 
+def test_list_claims_filters_by_claim_id(client):
+    res = client.get("/api/claims?claim_id=CLM-0002")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["total"] == 1
+    assert data["claims"][0]["claim_id"] == "CLM-0002"
+
+
 def test_list_claims_filters_by_date_range(client):
     res = client.get("/api/claims?date_from=2026-03-01&date_to=2026-03-31")
     data = res.json()["data"]

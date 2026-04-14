@@ -126,6 +126,7 @@ function buildQuery(params: Record<string, QueryValue> | ClaimsQuery): string {
 export interface ClaimsQuery {
   page?: number;
   page_size?: number;
+  claim_id?: string;
   status?: ClaimStatus;
   risk_band?: RiskBand;
   anomaly_type?: AnomalyType;

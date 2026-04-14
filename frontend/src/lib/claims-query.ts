@@ -78,6 +78,7 @@ export function claimsQueryFromSearchParams(searchParams: SearchParamsInput): Cl
   const sortDir =
     parseChoice(readFirst(searchParams.sort_dir), SORT_DIRECTIONS) ??
     DEFAULT_CLAIMS_QUERY.sort_dir;
+  const claimId = readFirst(searchParams.claim_id)?.trim();
   const providerId = readFirst(searchParams.provider_id)?.trim();
   const dateFrom = readFirst(searchParams.date_from);
   const dateTo = readFirst(searchParams.date_to);
@@ -87,6 +88,7 @@ export function claimsQueryFromSearchParams(searchParams: SearchParamsInput): Cl
     page_size: pageSize,
     sort_by: sortBy,
     sort_dir: sortDir,
+    claim_id: claimId || undefined,
     risk_band: parseChoice(readFirst(searchParams.risk_band), RISK_BANDS),
     anomaly_type: parseChoice(readFirst(searchParams.anomaly_type), ANOMALY_TYPES),
     status: parseChoice(readFirst(searchParams.status), CLAIM_STATUSES),
@@ -99,6 +101,7 @@ export function claimsQueryFromSearchParams(searchParams: SearchParamsInput): Cl
 export function claimsQueryToSearchParams(query: ClaimsQuery) {
   const params = new URLSearchParams();
 
+  addIfValue(params, "claim_id", query.claim_id?.trim());
   addIfValue(params, "risk_band", query.risk_band);
   addIfValue(params, "anomaly_type", query.anomaly_type);
   addIfValue(params, "status", query.status);
@@ -126,6 +129,7 @@ export function claimsQueryToSearchParams(query: ClaimsQuery) {
 
 export function getClaimsFilterCount(query: ClaimsQuery) {
   return [
+    query.claim_id,
     query.risk_band,
     query.anomaly_type,
     query.status,

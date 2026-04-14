@@ -217,6 +217,32 @@ export function ClaimsExplorer({
         <CardContent>
           <FieldGroup className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Field>
+              <FieldLabel htmlFor="claim_id">Claim ID</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="claim_id"
+                  placeholder="CLM-…"
+                  value={draft.claim_id ?? ""}
+                  onChange={(event) =>
+                    setDraft((query) => ({
+                      ...query,
+                      claim_id: event.target.value || undefined,
+                    }))
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      applyDraft();
+                    }
+                  }}
+                />
+              </InputGroup>
+            </Field>
+
+            <Field>
               <FieldLabel>Risk band</FieldLabel>
               <ToggleGroup
                 type="single"

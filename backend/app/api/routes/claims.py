@@ -79,6 +79,7 @@ def _merge_claim_with_score(claim: dict, score: dict | None) -> dict:
 def _list_claims_payload(
     store: DataStore,
     *,
+    claim_id: str | None,
     status: str | None,
     risk_band: str | None,
     anomaly_type: str | None,
@@ -101,6 +102,8 @@ def _list_claims_payload(
 
     df = claims_df.copy()
 
+    if claim_id:
+        df = df[df["claim_id"] == claim_id]
     if status:
         df = df[df["claim_status"] == status]
     if anomaly_type:
@@ -158,6 +161,7 @@ def _list_claims_payload(
 @router.get("")
 async def list_claims(
     store: Annotated[DataStore, Depends(get_data_store)],
+    claim_id: str | None = None,
     status: str | None = None,
     risk_band: str | None = None,
     anomaly_type: str | None = None,
@@ -172,6 +176,7 @@ async def list_claims(
     payload = await run_in_threadpool(
         _list_claims_payload,
         store,
+        claim_id=claim_id,
         status=status,
         risk_band=risk_band,
         anomaly_type=anomaly_type,

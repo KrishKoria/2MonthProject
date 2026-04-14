@@ -5,6 +5,7 @@ describe("claims query helpers", () => {
     const mod = await import("./claims-query");
 
     const query = mod.claimsQueryFromSearchParams({
+      claim_id: "CLM-4242",
       risk_band: "high",
       anomaly_type: "duplicate",
       provider_id: "PRV-771",
@@ -17,6 +18,7 @@ describe("claims query helpers", () => {
     });
 
     expect(query).toEqual({
+      claim_id: "CLM-4242",
       risk_band: "high",
       anomaly_type: "duplicate",
       provider_id: "PRV-771",
@@ -59,12 +61,13 @@ describe("claims query helpers", () => {
         page_size: 25,
         sort_by: "risk_score",
         sort_dir: "desc",
+        claim_id: "CLM-100",
         risk_band: "high",
         provider_id: "",
         date_from: undefined,
       })
       .toString();
 
-    expect(params).toBe("risk_band=high");
+    expect(params).toBe("claim_id=CLM-100&risk_band=high");
   });
 });
