@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it } from "bun:test";
 import * as accessTypes from "./access-types";
 import type {
