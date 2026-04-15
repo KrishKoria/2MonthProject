@@ -40,6 +40,9 @@ test("renders recorded human review details when a decision already exists", asy
   expect(html).toContain("Choose the next step");
   expect(html).toContain("Documentation supports billed level.");
   expect(html).toContain("investigator-7");
+  expect(html).toMatch(/<button[^>]*disabled[^>]*>[\s\S]*?Approve[\s\S]*?<\/button>/);
+  expect(html).toMatch(/<button[^>]*disabled[^>]*>[\s\S]*?Stop payment[\s\S]*?<\/button>/);
+  expect(html).toMatch(/<button[^>]*disabled[^>]*>[\s\S]*?Escalate[\s\S]*?<\/button>/);
 });
 
 test("renders a guided empty state before a review starts", async () => {

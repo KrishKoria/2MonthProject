@@ -53,10 +53,15 @@ export function HumanReviewDesk({
   );
   const [notes, setNotes] = useState(humanDecision?.notes ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const decisionLocked = disabled || Boolean(humanDecision);
 
   const activeDecision = DECISION_META[humanDecision?.decision ?? decision];
 
   async function saveDecision() {
+    if (decisionLocked || isSubmitting) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -113,8 +118,11 @@ export function HumanReviewDesk({
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={disabled}
+                disabled={decisionLocked}
                 onClick={() => {
+                  if (decisionLocked) {
+                    return;
+                  }
                   setDecision("accepted");
                   setOpen(true);
                 }}
@@ -125,8 +133,11 @@ export function HumanReviewDesk({
               <Button
                 size="sm"
                 variant="destructive"
-                disabled={disabled}
+                disabled={decisionLocked}
                 onClick={() => {
+                  if (decisionLocked) {
+                    return;
+                  }
                   setDecision("rejected");
                   setOpen(true);
                 }}
@@ -137,8 +148,11 @@ export function HumanReviewDesk({
               <Button
                 size="sm"
                 variant="outline"
-                disabled={disabled}
+                disabled={decisionLocked}
                 onClick={() => {
+                  if (decisionLocked) {
+                    return;
+                  }
                   setDecision("escalated");
                   setOpen(true);
                 }}
@@ -181,7 +195,15 @@ export function HumanReviewDesk({
         </div>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open && !decisionLocked}
+        onOpenChange={(nextOpen) => {
+          if (decisionLocked) {
+            return;
+          }
+          setOpen(nextOpen);
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Save the next step</DialogTitle>
@@ -197,6 +219,7 @@ export function HumanReviewDesk({
               <ToggleGroup
                 type="single"
                 value={decision}
+                disabled={decisionLocked || isSubmitting}
                 onValueChange={(value) => {
                   if (value) {
                     setDecision(value as DecisionKind);
@@ -204,13 +227,13 @@ export function HumanReviewDesk({
                 }}
                 className="justify-start"
               >
-                <ToggleGroupItem value="accepted">
+                <ToggleGroupItem value="accepted" disabled={decisionLocked || isSubmitting}>
                   {DECISION_META.accepted.actionLabel}
                 </ToggleGroupItem>
-                <ToggleGroupItem value="rejected">
+                <ToggleGroupItem value="rejected" disabled={decisionLocked || isSubmitting}>
                   {DECISION_META.rejected.actionLabel}
                 </ToggleGroupItem>
-                <ToggleGroupItem value="escalated">
+                <ToggleGroupItem value="escalated" disabled={decisionLocked || isSubmitting}>
                   {DECISION_META.escalated.actionLabel}
                 </ToggleGroupItem>
               </ToggleGroup>
@@ -225,6 +248,7 @@ export function HumanReviewDesk({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={6}
+                disabled={decisionLocked || isSubmitting}
               />
             </Field>
           </FieldGroup>
@@ -233,7 +257,7 @@ export function HumanReviewDesk({
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={saveDecision} disabled={isSubmitting}>
+            <Button onClick={saveDecision} disabled={decisionLocked || isSubmitting}>
               {isSubmitting ? <Spinner data-icon="inline-start" /> : null}
               Save decision
             </Button>
