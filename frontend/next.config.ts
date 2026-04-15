@@ -26,8 +26,10 @@ const nextConfig: NextConfig = {
 
     return [
       {
-        source: "/api/:path*",
-        destination: `${proxyTarget}/api/:path*`,
+        // Exclude /api/auth/* and /api/admin/* from FastAPI proxy — those are handled
+        // by Next.js App Router (Better Auth and admin route handlers).
+        source: "/api/((?!auth|admin).*)",
+        destination: `${proxyTarget}/api/$1`,
       },
     ];
   },
