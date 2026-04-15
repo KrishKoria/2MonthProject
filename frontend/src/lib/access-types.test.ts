@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { describe, expect, it } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import * as accessTypes from "./access-types";
 import type {
   AppRole,
@@ -10,17 +9,17 @@ import type {
 } from "./access-types";
 
 describe("access-types", () => {
-  it("exports a loadable module", () => {
-    expect(accessTypes).toBeDefined();
+  test("exports a loadable module", () => {
+    expect(Boolean(accessTypes)).toBe(true);
   });
 
-  it("defines the canonical app roles", () => {
+  test("defines the canonical app roles", () => {
     const roles: AppRole[] = ["reviewer", "senior_reviewer", "admin"];
 
     expect(roles).toEqual(["reviewer", "senior_reviewer", "admin"]);
   });
 
-  it("models session users with nullable roles and banned state", () => {
+  test("models session users with nullable roles and banned state", () => {
     const user: SessionUser = {
       id: "user_123",
       email: "reviewer@example.com",
@@ -43,7 +42,7 @@ describe("access-types", () => {
     expect(session.user.banned).toBe(false);
   });
 
-  it("models invite records and audit events", () => {
+  test("models invite records and audit events", () => {
     const invite: InviteRecord = {
       id: "invite_123",
       email: "invitee@example.com",

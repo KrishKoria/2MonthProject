@@ -7,7 +7,7 @@
  * Run `bunx auth@latest generate` and review BA column output before
  * running `bunx drizzle-kit generate` (open question from RESEARCH.md).
  */
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * custom_invitations: tracks invite tokens sent by admins.
