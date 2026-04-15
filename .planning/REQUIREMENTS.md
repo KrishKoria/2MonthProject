@@ -7,19 +7,19 @@
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can log in with email and a setup link (invite-only, no public signup)
-- [ ] **AUTH-02**: User can log in with Google social login — only if their Google account email matches an invited email
-- [ ] **AUTH-03**: User can log in with Microsoft social login — only if their Microsoft account email matches an invited email
+- [x] **AUTH-01**: User can log in with email and a setup link (invite-only, no public signup)
+- [x] **AUTH-02**: User can log in with Google social login — only if their Google account email matches an invited email
+- [x] **AUTH-03**: User can log in with Microsoft social login — only if their Microsoft account email matches an invited email
 - [ ] **AUTH-04**: First admin can bootstrap the system via a one-time bootstrap page that disables itself once an admin exists
-- [ ] **AUTH-05**: Authenticated session persists across browser refresh and page navigation
-- [ ] **AUTH-06**: Deactivated user sessions are revoked immediately — future sign-in attempts are blocked
+- [x] **AUTH-05**: Authenticated session persists across browser refresh and page navigation
+- [x] **AUTH-06**: Deactivated user sessions are revoked immediately — future sign-in attempts are blocked
 
 ### Access Control
 
 - [ ] **ACCESS-01**: Admin can invite a new user (email + role assigned at invite time); invited user receives an account setup link
 - [ ] **ACCESS-02**: Admin can change a user's role (`reviewer`, `senior_reviewer`, `admin`)
-- [ ] **ACCESS-03**: Admin can deactivate a user — all active sessions revoked immediately
-- [ ] **ACCESS-04**: Admin can reactivate a user — previous role restored, fresh sign-in required
+- [x] **ACCESS-03**: Admin can deactivate a user — all active sessions revoked immediately
+- [x] **ACCESS-04**: Admin can reactivate a user — previous role restored, fresh sign-in required
 - [ ] **ACCESS-05**: Admin can resend an invite to a pending user
 - [ ] **ACCESS-06**: Admin can view an access-management audit feed (invite sent, role changed, deactivated, reactivated events)
 - [ ] **ACCESS-07**: User with no assigned role sees an access-denied state after sign-in
@@ -111,16 +111,16 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
+| AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 2 | Pending |
-| AUTH-05 | Phase 1 | Pending |
-| AUTH-06 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Complete |
+| AUTH-06 | Phase 1 | Complete |
 | ACCESS-01 | Phase 5 | Pending |
 | ACCESS-02 | Phase 5 | Pending |
-| ACCESS-03 | Phase 1 | Pending |
-| ACCESS-04 | Phase 1 | Pending |
+| ACCESS-03 | Phase 1 | Complete |
+| ACCESS-04 | Phase 1 | Complete |
 | ACCESS-05 | Phase 5 | Pending |
 | ACCESS-06 | Phase 5 | Pending |
 | ACCESS-07 | Phase 2 | Pending |

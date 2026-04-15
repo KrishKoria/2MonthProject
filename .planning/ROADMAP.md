@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Reactivating a user restores their previous role and allows fresh sign-in
 **Plans**: 5 plans
 Plans:
-- [ ] 01-01-PLAN.md — Wave 0: Test scaffold (auth.test.ts, auth-session.test.ts, deactivate route.test.ts)
+- [x] 01-01-PLAN.md — Wave 0: Test scaffold (auth.test.ts, auth-session.test.ts, deactivate route.test.ts)
 - [ ] 01-02-PLAN.md — Wave 1: Dependencies + Neon db client + Drizzle schema + drizzle.config + .env.example
 - [ ] 01-03-PLAN.md — Wave 1: Type contracts (AppRole, SessionUser, InviteRecord) + access-control predicates
 - [ ] 01-04-PLAN.md — Wave 2: Better Auth server instance + browser auth client + Resend mailer
