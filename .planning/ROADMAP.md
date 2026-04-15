@@ -30,7 +30,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Authenticated session survives browser refresh and page navigation without re-login
   4. Deactivating a user immediately invalidates all active sessions; subsequent sign-in attempts are blocked
   5. Reactivating a user restores their previous role and allows fresh sign-in
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 01-01-PLAN.md — Wave 0: Test scaffold (auth.test.ts, auth-session.test.ts, deactivate route.test.ts)
+- [ ] 01-02-PLAN.md — Wave 1: Dependencies + Neon db client + Drizzle schema + drizzle.config + .env.example
+- [ ] 01-03-PLAN.md — Wave 1: Type contracts (AppRole, SessionUser, InviteRecord) + access-control predicates
+- [ ] 01-04-PLAN.md — Wave 2: Better Auth server instance + browser auth client + Resend mailer
+- [ ] 01-05-PLAN.md — Wave 3: Session helpers + BA route handler + admin deactivate/reactivate routes + migration checkpoint
 **UI hint**: no
 
 ### Phase 2: Session Gating + Entry Pages
@@ -94,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auth Foundation | 0/TBD | Not started | - |
+| 1. Auth Foundation | 0/5 | Not started | - |
 | 2. Session Gating + Entry Pages | 0/TBD | Not started | - |
 | 3. Authenticated Proxy | 0/TBD | Not started | - |
 | 4. Review Workflow Refactor | 0/TBD | Not started | - |
@@ -102,3 +108,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 ---
 *Created: 2026-04-15*
+*Phase 1 planned: 2026-04-15*
