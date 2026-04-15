@@ -16,8 +16,8 @@ test("next config proxies API requests to the backend in local development", asy
 
     expect(rewrites).toEqual([
       {
-        source: "/api/:path*",
-        destination: "http://127.0.0.1:8000/api/:path*",
+        source: "/api/((?!auth|admin).*)",
+        destination: "http://127.0.0.1:8000/api/$1",
       },
     ]);
   } finally {
