@@ -510,22 +510,19 @@ export async function sendInviteEmail(to: string, setupUrl: string) {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does the admin plugin add a `role` column that conflicts with `additionalFields.role`?**
    - What we know: The admin plugin docs show it adds `role` to the user table; `additionalFields` also adds `role`.
-   - What's unclear: Whether BA merges these or creates two columns; which one wins in the schema.
-   - Recommendation: Run `bunx auth@latest generate` on a test branch first and inspect the output schema before writing `schema.ts`.
+   - **RESOLVED (provisional):** Per Assumptions Log A1, Better Auth is expected to merge these into one column. However, this cannot be verified without running the schema generator. **Resolution method:** Plan 01-05 Task 3 (blocking human-verify checkpoint) requires `bunx auth@latest generate` output inspection before committing any schema or running `drizzle-kit generate`. If two `role` columns appear, the executor adjusts `auth.ts` to suppress the admin plugin's built-in role field before proceeding. The plan already includes this checkpoint and guard condition.
 
 2. **Does `auth.api.signUpEmail()` bypass `disableSignUp: true`?**
    - What we know: `disableSignUp` blocks the public endpoint. Server-side `auth.api.*` calls often bypass plugin restrictions.
-   - What's unclear: Whether there's a separate flag or the server-side API is always unrestricted.
-   - Recommendation: Verify empirically in a Wave 0 smoke test or check BA source code.
+   - **RESOLVED (provisional — Phase 2 dependency):** Per Assumptions Log A3, server-side `auth.api.signUpEmail()` is assumed to bypass `disableSignUp: true`. This assumption drives the Phase 2 invite-acceptance design. Phase 1 does not call `auth.api.signUpEmail()` — it only installs the auth config. The assumption will be empirically verified when Phase 2 implements the invite-acceptance route handler. If it does NOT bypass the flag, a separate `disableSignUpByApi: false` config option or a custom plugin hook will be needed (Phase 2 scope).
 
 3. **Does Better Auth's account linking guard enforce email matching at the BA layer, or does the app need a custom hook?**
    - What we know: `allowDifferentEmails: false` is in the config. D-12 relies on this.
-   - What's unclear: Whether this alone prevents social sign-in for emails not in the `custom_invitations` table (vs. merely requiring email match with an existing BA user).
-   - Recommendation: The planner should add a `callbackURL` hook in `auth.ts` that checks `custom_invitations` before completing social sign-in.
+   - **RESOLVED (partial mitigation):** `allowDifferentEmails: false` prevents social account linking to an existing BA user with a different email — it does NOT prevent a net-new social sign-in for an email that is not in `custom_invitations`. The Plans add a `callbackURL` pre-check hook in `auth.ts` (Plan 01-04) that queries `custom_invitations` before completing social sign-in, providing defense-in-depth. This means AUTH-02 and AUTH-03 are enforced at two layers: BA's built-in account linking guard + the application-level invite check hook.
 
 ---
 
