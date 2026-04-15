@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpTooltip } from "@/components/guidance/HelpTooltip";
 import {
   CartesianGrid,
   Line,
@@ -20,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
+import { TERM_COPY } from "@/lib/experience-copy";
 import type { ModelPerformance } from "@/lib/types";
 
 interface Props {
@@ -64,11 +66,14 @@ export function PrecisionRecallChart({ curve, operatingThreshold = 0.5 }: Props)
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
-              Precision–recall curve
-            </CardDescription>
+            <div className="flex items-center gap-1.5">
+              <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
+                Accuracy vs coverage
+              </CardDescription>
+              <HelpTooltip label="Precision and recall">{TERM_COPY.precisionRecall}</HelpTooltip>
+            </div>
             <CardTitle className="font-display text-3xl font-normal italic">
-              The tradeoff, plotted
+              What you gain and lose as the bar moves
             </CardTitle>
           </div>
           <Badge variant="outline" className="gap-1.5 font-mono text-[10px] whitespace-nowrap">
@@ -161,7 +166,8 @@ export function PrecisionRecallChart({ curve, operatingThreshold = 0.5 }: Props)
         </div>
       </CardContent>
       <CardFooter className="text-xs italic text-muted-foreground">
-        Raise the threshold to buy precision; spend recall.
+        Raise the threshold to review fewer claims more accurately; lower it to
+        catch more claims at once.
       </CardFooter>
     </Card>
   );

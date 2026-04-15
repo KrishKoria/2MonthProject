@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Activity, LayoutDashboard, ShieldAlert } from "lucide-react";
+import { Activity, LayoutDashboard, ShieldAlert, Sparkles } from "lucide-react";
 
 import "./globals.css";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const metadata: Metadata = {
   title: "Sentinel · Claims Investigation Intelligence",
-  description: "Payment integrity workbench for Medicare Part B — synthetic data demonstration.",
+  description: "Guided claims review workspace for a synthetic Medicare Part B demonstration.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -38,10 +39,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Separator orientation="vertical" className="h-8" />
               <div className="flex items-center gap-1">
                 <NavLink href="/" icon={<LayoutDashboard className="size-3.5" />}>
-                  Dashboard
+                  Home
                 </NavLink>
                 <NavLink href="/claims" icon={<Activity className="size-3.5" />}>
-                  Claims
+                  Review queue
                 </NavLink>
               </div>
               <div className="ml-auto flex items-center gap-3">
@@ -51,12 +52,23 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 </Badge>
               </div>
             </nav>
+            <div className="border-t border-border/70 bg-support-soft/70">
+              <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-6 py-2 text-xs text-support-foreground">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="size-3.5" />
+                  New here? Start with the review queue. Info dots explain unfamiliar terms.
+                </div>
+                <Button variant="outline" size="sm" asChild className="ml-auto border-support/30 bg-background/70">
+                  <Link href="/claims?risk_band=high">Open high-priority claims</Link>
+                </Button>
+              </div>
+            </div>
           </header>
           <main className="flex-1">{children}</main>
           <footer className="border-t border-border/70 bg-background/50">
             <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-6 py-4 text-xs text-muted-foreground">
-              <span className="font-mono">v0.1 · deterministic-first pipeline</span>
-              <span className="font-display italic">Measure twice. Pay once.</span>
+              <span className="font-mono">v0.1 · guided synthetic review workspace</span>
+              <span className="font-display italic">Clear signals. Human decisions.</span>
             </div>
           </footer>
           <Toaster position="top-right" />

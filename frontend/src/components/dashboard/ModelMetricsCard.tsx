@@ -1,7 +1,9 @@
 import { Activity, Crosshair } from "lucide-react";
 
+import { HelpTooltip } from "@/components/guidance/HelpTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { TERM_COPY } from "@/lib/experience-copy";
 import type { ModelPerformance } from "@/lib/types";
 
 interface ModelMetricsCardProps {
@@ -81,10 +83,11 @@ export function ModelMetricsCard({ performance }: ModelMetricsCardProps) {
         <CardHeader>
           <CardDescription className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em]">
             <Activity className="size-3" />
-            AUC-ROC
+            Ranking quality
+            <HelpTooltip label="AUC-ROC">{TERM_COPY.aucRoc}</HelpTooltip>
           </CardDescription>
           <CardTitle className="font-display text-3xl font-normal italic">
-            How well it ranks
+            How well risky claims rise to the top
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-[1.1fr_1fr] items-end gap-5">
@@ -93,8 +96,8 @@ export function ModelMetricsCard({ performance }: ModelMetricsCardProps) {
               {auc.toFixed(3)}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Area under the ROC curve on a held-out synthetic split.
-              Higher means suspicious claims consistently outrank clean ones.
+              This score tells you whether the system usually ranks suspicious
+              claims above clean ones.
             </p>
           </div>
           <div className="-mb-2 self-center">
@@ -102,7 +105,7 @@ export function ModelMetricsCard({ performance }: ModelMetricsCardProps) {
           </div>
         </CardContent>
         <CardFooter className="justify-between text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          <span>0.5 random · 1.0 perfect</span>
+          <span>0.5 guessing · 1.0 near-perfect separation</span>
           <Badge variant="outline" className="gap-1.5 font-mono text-[10px]">
             <span className="inline-block size-1.5 rounded-full bg-[var(--chart-2)]" />
             Synthetic data
@@ -118,10 +121,11 @@ export function ModelMetricsCard({ performance }: ModelMetricsCardProps) {
         <CardHeader>
           <CardDescription className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em]">
             <Crosshair className="size-3" />
-            Precision @ K
+            Top-of-queue accuracy
+            <HelpTooltip label="Precision at K">{TERM_COPY.precisionAtK}</HelpTooltip>
           </CardDescription>
           <CardTitle className="font-display text-3xl font-normal italic">
-            The queue&apos;s top {k}
+            In the first {k} claims, how many are real issues
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -131,7 +135,7 @@ export function ModelMetricsCard({ performance }: ModelMetricsCardProps) {
               <span className="text-3xl text-muted-foreground">%</span>
             </div>
             <span className="text-xs text-muted-foreground">
-              of the top-{k} scores are true anomalies
+              of the first {k} claims are true anomalies
             </span>
           </div>
           <div className="relative h-2 overflow-hidden rounded-full bg-muted">
@@ -157,7 +161,7 @@ export function ModelMetricsCard({ performance }: ModelMetricsCardProps) {
           </div>
         </CardContent>
         <CardFooter className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          Operating threshold drives investigator workload ordering
+          Raising the bar reviews fewer claims with stronger signal
         </CardFooter>
       </Card>
     </div>

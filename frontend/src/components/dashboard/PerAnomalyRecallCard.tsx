@@ -1,7 +1,9 @@
 import { Split } from "lucide-react";
 
+import { HelpTooltip } from "@/components/guidance/HelpTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ANOMALY_COPY, TERM_COPY } from "@/lib/experience-copy";
 import type { AnomalyType, ModelPerformance } from "@/lib/types";
 
 interface Props {
@@ -10,18 +12,18 @@ interface Props {
 
 const COPY: Record<AnomalyType, { label: string; note: string; accent: string }> = {
   upcoding: {
-    label: "Upcoding",
-    note: "Service levels inflated beyond what was delivered.",
+    label: ANOMALY_COPY.upcoding.label,
+    note: ANOMALY_COPY.upcoding.description,
     accent: "var(--chart-1)",
   },
   ncci_violation: {
-    label: "NCCI conflict",
-    note: "Code pairs that CMS forbids together.",
+    label: ANOMALY_COPY.ncci_violation.label,
+    note: ANOMALY_COPY.ncci_violation.description,
     accent: "var(--chart-2)",
   },
   duplicate: {
-    label: "Duplicate billing",
-    note: "Near-identical claims inside narrow windows.",
+    label: ANOMALY_COPY.duplicate.label,
+    note: ANOMALY_COPY.duplicate.description,
     accent: "var(--chart-3)",
   },
 };
@@ -79,10 +81,11 @@ export function PerAnomalyRecallCard({ recall }: Props) {
           <div>
             <CardDescription className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em]">
               <Split className="size-3" />
-              Recall by anomaly
+              Catch rate by problem type
+              <HelpTooltip label="Recall">{TERM_COPY.recall}</HelpTooltip>
             </CardDescription>
             <CardTitle className="font-display text-3xl font-normal italic">
-              Where the net catches
+              Which issues are easier to catch
             </CardTitle>
           </div>
           <Badge variant="outline" className="gap-1.5 font-mono text-[10px] whitespace-nowrap">
@@ -116,7 +119,8 @@ export function PerAnomalyRecallCard({ recall }: Props) {
         </ul>
       </CardContent>
       <CardFooter className="text-xs italic text-muted-foreground">
-        Uneven recall is expected — some anomaly types leave sharper signals than others.
+        Different claim problems leave different signal strength, so the catch
+        rate is not uniform.
       </CardFooter>
     </Card>
   );

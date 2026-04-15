@@ -1,17 +1,21 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 test("uses the shared chart container sizing wrapper", async () => {
   const mod = await import("./PrecisionRecallChart");
 
   const html = renderToStaticMarkup(
-    <mod.PrecisionRecallChart
-      curve={[
-        { threshold: 0.2, precision: 0.31, recall: 0.88 },
-        { threshold: 0.5, precision: 0.74, recall: 0.62 },
-        { threshold: 0.8, precision: 0.91, recall: 0.27 },
-      ]}
-    />,
+    <TooltipProvider>
+      <mod.PrecisionRecallChart
+        curve={[
+          { threshold: 0.2, precision: 0.31, recall: 0.88 },
+          { threshold: 0.5, precision: 0.74, recall: 0.62 },
+          { threshold: 0.8, precision: 0.91, recall: 0.27 },
+        ]}
+      />
+    </TooltipProvider>,
   );
 
   expect(html).toContain('data-slot="chart"');

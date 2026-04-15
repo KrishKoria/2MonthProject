@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight, CircleAlert, FileSearch } from "lucide-react";
 
+import { GuidePanel } from "@/components/guidance/GuidePanel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,6 +16,7 @@ import { CodeChip } from "@/components/claims/CodeChip";
 import { InvestigationConsole } from "@/components/investigation/InvestigationConsole";
 import { RiskPanel } from "@/components/investigation/RiskPanel";
 import { ApiError, apiFor } from "@/lib/api";
+import { ANOMALY_COPY, CLAIM_GUIDE_STEPS, STATUS_COPY } from "@/lib/experience-copy";
 import { getServerApiBaseUrl } from "@/lib/server-api";
 import type { ClaimDetail } from "@/lib/types";
 
@@ -77,10 +79,10 @@ export default async function ClaimDetailPage({ params }: PageProps) {
         <div>
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             <FileSearch className="size-3" />
-            Claim dossier
+            Claim review
           </div>
           <h1 className="mt-3 font-display text-5xl leading-[1.02] tracking-tight md:text-6xl">
-            Case <em className="text-muted-foreground">№</em>{" "}
+            Claim <em className="text-muted-foreground">#</em>{" "}
             <span className="font-mono text-3xl md:text-4xl">{claim.claim_id}</span>
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -93,28 +95,36 @@ export default async function ClaimDetailPage({ params }: PageProps) {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-            {claim.claim_status.replace(/_/g, " ")}
+            {STATUS_COPY[claim.claim_status].label}
           </Badge>
           {claim.anomaly_type ? (
             <Badge
               className="text-[10px] uppercase tracking-wider text-background"
               style={{ background: bandColor }}
             >
-              {claim.anomaly_type.replace(/_/g, " ")}
+              {ANOMALY_COPY[claim.anomaly_type].label}
             </Badge>
           ) : null}
         </div>
       </header>
+
+      <GuidePanel
+        className="mt-6 animate-rise"
+        eyebrow="Case guide"
+        title="This screen walks you from signal to decision."
+        description="Read the score in plain language, check the facts the system found, and then choose what should happen next."
+        steps={CLAIM_GUIDE_STEPS}
+      />
 
       <div className="mt-10 grid gap-5 lg:grid-cols-3">
         {/* Risk panel */}
         <Card className="animate-rise lg:col-span-1" style={{ animationDelay: "80ms" }}>
           <CardHeader>
             <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
-              Risk read
+              Why this claim stands out
             </CardDescription>
             <CardTitle className="font-display text-3xl font-normal italic">
-              How the model sees it
+              Start with the score
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -126,10 +136,10 @@ export default async function ClaimDetailPage({ params }: PageProps) {
         <Card className="animate-rise lg:col-span-2" style={{ animationDelay: "150ms" }}>
           <CardHeader>
             <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
-              Claim record
+              Claim facts
             </CardDescription>
             <CardTitle className="font-display text-3xl font-normal italic">
-              What the ledger shows
+              What is on the claim
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
@@ -195,10 +205,10 @@ export default async function ClaimDetailPage({ params }: PageProps) {
       <Card className="mt-5 animate-rise overflow-hidden" style={{ animationDelay: "220ms" }}>
         <CardHeader>
           <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
-            Investigation
+            Guided review
           </CardDescription>
           <CardTitle className="font-display text-3xl font-normal italic">
-            Evidence &amp; rationale
+            Facts, summary, and next step
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-8">

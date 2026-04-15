@@ -1,7 +1,9 @@
 import { Layers } from "lucide-react";
 
+import { HelpTooltip } from "@/components/guidance/HelpTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { TERM_COPY } from "@/lib/experience-copy";
 import type { ModelPerformance } from "@/lib/types";
 
 interface Props {
@@ -63,10 +65,11 @@ export function AblationTable({ ablation }: Props) {
           <div>
             <CardDescription className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em]">
               <Layers className="size-3" />
-              Ablation
+              Combined vs separate checks
+              <HelpTooltip label="Why compare the layers">{TERM_COPY.ablation}</HelpTooltip>
             </CardDescription>
             <CardTitle className="font-display text-3xl font-normal italic">
-              Which layer earns its keep
+              What each layer contributes
             </CardTitle>
           </div>
           <Badge variant="outline" className="gap-1.5 font-mono text-[10px] whitespace-nowrap">
@@ -100,7 +103,7 @@ export function AblationTable({ ablation }: Props) {
                 className="grid grid-cols-2 gap-x-4 gap-y-3 py-4 md:grid-cols-[1.5fr_0.9fr_0.9fr_0.9fr] md:items-center md:gap-6"
               >
                 <div className="col-span-2 flex flex-col gap-1 md:col-span-1">
-                  <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     {row.eyebrow}
                   </span>
                   <span
@@ -122,7 +125,8 @@ export function AblationTable({ ablation }: Props) {
         </ul>
       </CardContent>
       <CardFooter className="text-xs italic text-muted-foreground">
-        Combined lifts recall without surrendering much precision — that&apos;s the point of the layered design.
+        The combined approach catches more of the right claims without giving up
+        much accuracy.
       </CardFooter>
     </Card>
   );

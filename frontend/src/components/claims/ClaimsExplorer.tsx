@@ -12,6 +12,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
+import { GuidePanel } from "@/components/guidance/GuidePanel";
+import { HelpTooltip } from "@/components/guidance/HelpTooltip";
 import type { ClaimsQuery } from "@/lib/api";
 import {
   CLAIMS_PAGE_SIZES,
@@ -20,6 +22,13 @@ import {
   DEFAULT_CLAIMS_QUERY,
   getClaimsFilterCount,
 } from "@/lib/claims-query";
+import {
+  ANOMALY_COPY,
+  QUEUE_GUIDE_STEPS,
+  RISK_BAND_COPY,
+  STATUS_COPY,
+  TERM_COPY,
+} from "@/lib/experience-copy";
 import { cn } from "@/lib/utils";
 import type { AnomalyType, ClaimListItem, ClaimStatus, RiskBand } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -71,24 +80,24 @@ interface ClaimsExplorerProps {
 }
 
 const ANOMALY_LABELS: Record<AnomalyType, string> = {
-  upcoding: "Upcoding",
-  ncci_violation: "NCCI",
-  duplicate: "Duplicate",
+  upcoding: ANOMALY_COPY.upcoding.label,
+  ncci_violation: ANOMALY_COPY.ncci_violation.label,
+  duplicate: ANOMALY_COPY.duplicate.label,
 };
 
 const STATUS_LABELS: Record<ClaimStatus, string> = {
-  pending_review: "Pending review",
-  accepted: "Accepted",
-  rejected: "Rejected",
-  escalated: "Escalated",
-  manual_review_required: "Manual review",
+  pending_review: STATUS_COPY.pending_review.label,
+  accepted: STATUS_COPY.accepted.label,
+  rejected: STATUS_COPY.rejected.label,
+  escalated: STATUS_COPY.escalated.label,
+  manual_review_required: STATUS_COPY.manual_review_required.label,
 };
 
 const SORT_LABELS: Record<NonNullable<ClaimsQuery["sort_by"]>, string> = {
-  risk_score: "Risk score",
-  service_date: "Service date",
-  claim_receipt_date: "Receipt date",
-  charge_amount: "Charge",
+  risk_score: "Priority score",
+  service_date: "Date of service",
+  claim_receipt_date: "Date received",
+  charge_amount: "Charge amount",
 };
 
 function statusVariant(s: ClaimStatus): "default" | "secondary" | "destructive" | "outline" {
@@ -113,7 +122,7 @@ function RiskPill({ band, score }: { band: RiskBand | null; score: number | null
   return (
     <div className="flex items-center gap-2">
       <span className="inline-block size-2 rounded-full" style={{ background: color }} />
-      <span className="font-mono text-xs capitalize">{band}</span>
+      <span className="font-mono text-xs">{RISK_BAND_COPY[band].label}</span>
       {score != null ? (
         <span className="font-mono text-xs tabular-nums text-muted-foreground">
           {score.toFixed(0)}
@@ -170,19 +179,19 @@ export function ClaimsExplorer({
       <header className="animate-rise flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           <Search className="size-3" />
-          Claims explorer
+          Review queue
           <span className="inline-block size-1 rounded-full bg-[var(--chart-2)]" />
-          URL-synced queue
+          Shared filters stay in the URL
         </div>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="font-display text-5xl leading-[1.05] tracking-tight md:text-6xl">
-              Every claim, <em className="text-muted-foreground">in view.</em>
+              Find a claim, <em className="text-muted-foreground">then open the story.</em>
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground md:text-base">
-              Refine the review queue, share a canonical URL with the same filters,
-              and move from high-risk triage into full case investigation without
-              losing context.
+              Start with the highest-priority claims or narrow the list only when
+              you need to. Once you open a row, the case view explains what stands
+              out and what to do next.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -205,13 +214,21 @@ export function ClaimsExplorer({
         </div>
       </header>
 
+      <GuidePanel
+        className="mt-8 animate-rise"
+        eyebrow="Queue guide"
+        title="The queue is meant to feel navigable."
+        description="You can review from left to right: find a claim, open the case, and let the guided review explain the evidence."
+        steps={QUEUE_GUIDE_STEPS}
+      />
+
       <Card className="mt-8 animate-rise" style={{ animationDelay: "100ms" }}>
         <CardHeader>
           <CardDescription className="text-[11px] uppercase tracking-[0.14em]">
             Filters
           </CardDescription>
           <CardTitle className="font-display text-2xl font-normal italic">
-            Refine the queue
+            Narrow the list only if you need to
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -224,7 +241,7 @@ export function ClaimsExplorer({
                 </InputGroupAddon>
                 <InputGroupInput
                   id="search"
-                  placeholder="Claim, provider, member, CPT, ICD..."
+                  placeholder="Claim number, provider, member, or code"
                   value={draft.search ?? ""}
                   onChange={(event) =>
                     setDraft((query) => ({
@@ -243,7 +260,10 @@ export function ClaimsExplorer({
             </Field>
 
             <Field>
-              <FieldLabel>Risk band</FieldLabel>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel>Priority</FieldLabel>
+                <HelpTooltip label="Priority score">{TERM_COPY.riskScore}</HelpTooltip>
+              </div>
               <ToggleGroup
                 type="single"
                 variant="outline"
@@ -264,7 +284,7 @@ export function ClaimsExplorer({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="anomaly">Anomaly type</FieldLabel>
+              <FieldLabel htmlFor="anomaly">Problem type</FieldLabel>
               <Select
                 value={draft.anomaly_type ?? "all"}
                 onValueChange={(value) =>
@@ -275,21 +295,23 @@ export function ClaimsExplorer({
                 }
               >
                 <SelectTrigger id="anomaly">
-                  <SelectValue placeholder="Any anomaly" />
+                  <SelectValue placeholder="Any problem type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="all">Any anomaly</SelectItem>
-                    <SelectItem value="upcoding">Upcoding</SelectItem>
-                    <SelectItem value="ncci_violation">NCCI violation</SelectItem>
-                    <SelectItem value="duplicate">Duplicate</SelectItem>
+                    <SelectItem value="all">Any problem type</SelectItem>
+                    <SelectItem value="upcoding">{ANOMALY_COPY.upcoding.label}</SelectItem>
+                    <SelectItem value="ncci_violation">
+                      {ANOMALY_COPY.ncci_violation.label}
+                    </SelectItem>
+                    <SelectItem value="duplicate">{ANOMALY_COPY.duplicate.label}</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="status">Queue status</FieldLabel>
+              <FieldLabel htmlFor="status">Review status</FieldLabel>
               <Select
                 value={draft.status ?? "all"}
                 onValueChange={(value) =>
@@ -300,16 +322,20 @@ export function ClaimsExplorer({
                 }
               >
                 <SelectTrigger id="status">
-                  <SelectValue placeholder="Any status" />
+                  <SelectValue placeholder="Any review status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="all">Any status</SelectItem>
-                    <SelectItem value="pending_review">Pending review</SelectItem>
-                    <SelectItem value="manual_review_required">Manual review</SelectItem>
-                    <SelectItem value="accepted">Accepted</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="escalated">Escalated</SelectItem>
+                    <SelectItem value="all">Any review status</SelectItem>
+                    <SelectItem value="pending_review">
+                      {STATUS_COPY.pending_review.label}
+                    </SelectItem>
+                    <SelectItem value="manual_review_required">
+                      {STATUS_COPY.manual_review_required.label}
+                    </SelectItem>
+                    <SelectItem value="accepted">{STATUS_COPY.accepted.label}</SelectItem>
+                    <SelectItem value="rejected">{STATUS_COPY.rejected.label}</SelectItem>
+                    <SelectItem value="escalated">{STATUS_COPY.escalated.label}</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -450,15 +476,15 @@ export function ClaimsExplorer({
         >
           <Table>
             <TableHeader>
-              <TableRow className="text-[11px] uppercase tracking-[0.14em]">
+                <TableRow className="text-[11px] uppercase tracking-[0.14em]">
                 <TableHead>Claim</TableHead>
                 <TableHead>Member</TableHead>
                 <TableHead>Provider</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Risk</TableHead>
-                <TableHead>Anomaly</TableHead>
+                <TableHead>Service date</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Problem type</TableHead>
                 <TableHead className="text-right">Charge</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Review status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -520,11 +546,10 @@ export function ClaimsExplorer({
         {!error && !isPending && rows.length === 0 ? (
           <div className="p-8">
             <Empty>
-              <EmptyHeader>
+                <EmptyHeader>
                 <EmptyTitle>No claims match these filters</EmptyTitle>
                 <EmptyDescription>
-                  Widen the service-date range or clear the queue status to pull more
-                  claims into view.
+                  Clear one or two filters to bring more claims back into view.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
