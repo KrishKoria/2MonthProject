@@ -6,7 +6,7 @@
  * - D-05/D-06: App role stored in additionalFields.role - NOT admin plugin built-in role (D-07)
  * - D-11: db client uses drizzle-orm/neon-serverless Pool (NOT neon-http - no transaction support)
  * - D-12: Account linking: trustedProviders, allowDifferentEmails:false
- * - cookieCache is deliberately NOT enabled - session reads must hit DB so banned check is live (AUTH-06)
+ * - Session cache is deliberately NOT enabled - session reads must hit DB so banned check is live (AUTH-06)
  *
  * NEVER import this file in browser/client components - server-only.
  */
@@ -65,7 +65,7 @@ export const auth = betterAuth({
     // Do NOT call admin.setRole() for app roles.
   ],
 
-  // cookieCache is intentionally absent.
+  // Session cache is intentionally absent.
   // If enabled, banned users could remain "active" until cache TTL expires,
   // violating AUTH-06 (immediate session revocation on deactivation).
 });
