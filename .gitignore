@@ -62,6 +62,7 @@ coverage/
 .claude/
 .agents/
 .understand-anything/
+.codex/
 
 _tmp/
 tmp/
