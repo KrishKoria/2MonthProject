@@ -4,15 +4,15 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 01
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-15T17:18:31.897Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-15T17:22:31.144Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
-  percent: 20
+  completed_plans: 3
+  percent: 60
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 ## Current Position
 
 Phase: 01 (auth-foundation) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-04-15
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 5 min | 3 tasks | 4 files |
+| Phase 01 P02 | 1200 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,9 @@ Key constraints for implementation:
 - Investigation history stored as JSON, not Parquet
 - [Phase 01]: Leave concurrent out-of-scope auth-foundation work untouched and log it in deferred-items instead of folding it into this plan.
 - [Phase 01]: Treat module-not-found failures as the expected RED signal for Wave 0 because auth implementation lands in later plans.
+- [Phase 01]: Use drizzle-orm/neon-serverless with @neondatabase/serverless Pool for Better Auth transaction support.
+- [Phase 01]: Use DATABASE_URL at runtime and DATABASE_URL_UNPOOLED for drizzle-kit DDL and migration generation.
+- [Phase 01]: Keep frontend/.env.example placeholder-only and rely on repo/frontend .gitignore rules for real secrets.
 
 ### Pending Todos
 
@@ -89,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T17:18:30.144Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-15T17:22:31.133Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
