@@ -18,6 +18,7 @@ Every claim decision must carry clear authority and an immutable audit trail —
 - ✓ Human review desk with accept/reject/escalate actions — existing
 - ✓ Analytics and model-performance views — existing
 - ✓ NCCI code lookup — existing
+- Phase 1 validated: Better Auth foundation on Neon/Drizzle, Google and Microsoft login wiring, persistent server sessions, admin deactivate/reactivate routes, and the initial auth migration.
 
 ### Active
 
@@ -76,6 +77,10 @@ Every claim decision must carry clear authority and an immutable audit trail —
 
 **Open areas to resolve during planning:** Exact invite acceptance UX flow, FastAPI identity-header trust mechanism detail, event/comment schema field completeness, and role snapshot capture on comments.
 
+## Current State
+
+Phase 1 is complete. The frontend now has Better Auth configured against Neon/Drizzle, server-side session helpers, admin deactivate/reactivate routes, and generated auth migrations. The next focus is Phase 2: whole-app session gating plus sign-in, invite acceptance, and bootstrap entry pages.
+
 ## Constraints
 
 - **Tech stack**: Next.js 16, React 19, Better Auth, Drizzle ORM, Neon Postgres, FastAPI, Pydantic v2, Bun, uv, pytest — no changes to core stack
@@ -114,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after initialization*
+*Last updated: 2026-04-15 after Phase 1 completion*

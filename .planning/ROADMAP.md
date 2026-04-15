@@ -12,7 +12,7 @@
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Auth Foundation** - Neon DB, Drizzle schema, Better Auth config, social login, session management, and deactivation/reactivation
+- [x] **Phase 1: Auth Foundation** - Neon DB, Drizzle schema, Better Auth config, social login, session management, and deactivation/reactivation
 - [ ] **Phase 2: Session Gating + Entry Pages** - proxy.ts middleware enforcing whole-app auth, public route exclusions, sign-in, invite acceptance, and bootstrap pages
 - [ ] **Phase 3: Authenticated Proxy** - Replace blind Next.js rewrite with route handlers that forward a trusted identity envelope; FastAPI validates proxy secret and actor headers
 - [ ] **Phase 4: Review Workflow Refactor** - Append-only review events, computed workflow/disposition state, JSON persistence, role-gated backend enforcement
@@ -36,7 +36,7 @@ Plans:
 - [x] 01-02-PLAN.md — Wave 1: Dependencies + Neon db client + Drizzle schema + drizzle.config + .env.example
 - [x] 01-03-PLAN.md — Wave 1: Type contracts (AppRole, SessionUser, InviteRecord) + access-control predicates
 - [x] 01-04-PLAN.md — Wave 2: Better Auth server instance + browser auth client + Resend mailer
-- [ ] 01-05-PLAN.md — Wave 3: Session helpers + BA route handler + admin deactivate/reactivate routes + migration checkpoint
+- [x] 01-05-PLAN.md — Wave 3: Session helpers + BA route handler + admin deactivate/reactivate routes + migration checkpoint
 **UI hint**: no
 
 ### Phase 2: Session Gating + Entry Pages
@@ -100,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auth Foundation | 4/5 | In Progress|  |
+| 1. Auth Foundation | 5/5 | Complete | 2026-04-15 |
 | 2. Session Gating + Entry Pages | 0/TBD | Not started | - |
 | 3. Authenticated Proxy | 0/TBD | Not started | - |
 | 4. Review Workflow Refactor | 0/TBD | Not started | - |
