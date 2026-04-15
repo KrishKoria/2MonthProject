@@ -95,7 +95,7 @@ describe("investigation stage helpers", () => {
     ).toEqual({
       tone: "not_applicable",
       headline: "Not applicable.",
-      detail: "This claim does not contain enough procedure codes for an NCCI pair check.",
+      detail: "This claim does not contain enough procedure codes for a code-pairing rule check.",
     });
   });
 });

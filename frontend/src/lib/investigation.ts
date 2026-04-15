@@ -7,6 +7,7 @@ import type {
   Investigation,
   SourceRecord,
 } from "./types";
+import { DECISION_COPY, TERM_COPY } from "./experience-copy";
 
 export type InvestigationStage =
   | "idle"
@@ -29,24 +30,28 @@ export const DECISION_META: Record<
   DecisionKind,
   {
     label: string;
+    actionLabel: string;
     badgeVariant: "default" | "secondary" | "destructive" | "outline";
     summary: string;
   }
 > = {
   accepted: {
-    label: "Accepted",
+    label: DECISION_COPY.accepted.recordLabel,
+    actionLabel: DECISION_COPY.accepted.actionLabel,
     badgeVariant: "secondary",
-    summary: "Approve payment and close the investigation.",
+    summary: DECISION_COPY.accepted.description,
   },
   rejected: {
-    label: "Rejected",
+    label: DECISION_COPY.rejected.recordLabel,
+    actionLabel: DECISION_COPY.rejected.actionLabel,
     badgeVariant: "destructive",
-    summary: "Deny or claw back payment based on the evidence trail.",
+    summary: DECISION_COPY.rejected.description,
   },
   escalated: {
-    label: "Escalated",
+    label: DECISION_COPY.escalated.recordLabel,
+    actionLabel: DECISION_COPY.escalated.actionLabel,
     badgeVariant: "default",
-    summary: "Route the case to senior review with the current evidence packet.",
+    summary: DECISION_COPY.escalated.description,
   },
 };
 
@@ -87,11 +92,11 @@ function isKnownNotApplicable(source: SourceRecord) {
 function describeReason(reason: string | null) {
   switch (reason) {
     case "no_ncci_codes_in_claim":
-      return "This claim does not contain enough procedure codes for an NCCI pair check.";
+      return "This claim does not contain enough procedure codes for a code-pairing rule check.";
     case "missing_service_date":
-      return "The claim is missing a usable service date for the NCCI check.";
+      return "The claim is missing a usable service date for the code-pairing rule check.";
     case "engine_error":
-      return "The NCCI rules engine failed while checking this claim.";
+      return "The billing rule engine failed while checking this claim.";
     case "missing_member_or_date":
       return "Duplicate matching needs both member and service date context.";
     case "claims_unavailable":
@@ -103,9 +108,9 @@ function describeReason(reason: string | null) {
     case "provider_not_found":
       return "The provider could not be found in the roster.";
     case "no_results":
-      return "No matching policy citations were retrieved.";
+      return "No matching policy text was found.";
     case "no_conflicts_found":
-      return "The claim was checked against active NCCI edits and no conflict was found.";
+      return "The claim was checked against active billing rules and no conflict was found.";
     default:
       return reason ? reason.replace(/_/g, " ") : null;
   }
@@ -145,15 +150,15 @@ export function getEvidenceSourceDisplay(
     if (source.status === "success" && evidence.ncci_findings?.conflict_exists) {
       return {
         tone: "success",
-        headline: "Conflict detected.",
+        headline: "Billing rule conflict found.",
         detail:
-          evidence.ncci_findings.rationale ?? "An active NCCI edit was found for this claim.",
+          evidence.ncci_findings.rationale ?? TERM_COPY.ncci,
       };
     }
     if (source.status === "success") {
       return {
         tone: "success",
-        headline: "No conflict found.",
+        headline: "No billing rule conflict found.",
         detail: describeReason(source.reason),
       };
     }
@@ -170,15 +175,15 @@ export function getEvidenceSourceDisplay(
     if (source.status === "success" && evidence.duplicate_matches.length) {
       return {
         tone: "success",
-        headline: "Possible duplicates found.",
+        headline: "Similar nearby claims found.",
         detail: "Nearby claims with overlapping procedure codes were identified.",
       };
     }
     if (source.status === "success") {
       return {
         tone: "success",
-        headline: "No duplicate matches.",
-        detail: "Nearby claims for the same member/provider were checked and no duplicate was found.",
+        headline: "No similar nearby claims found.",
+        detail: "Nearby claims for the same member and provider were checked and no duplicate was found.",
       };
     }
     if (isKnownNotApplicable(source)) {
@@ -193,14 +198,14 @@ export function getEvidenceSourceDisplay(
   if (source.status === "success") {
     return {
       tone: "success",
-      headline: "Consulted successfully.",
+      headline: "Checked successfully.",
       detail: describeReason(source.reason),
     };
   }
 
   return {
     tone: "unavailable",
-    headline: "Unavailable.",
+    headline: "Could not check this source.",
     detail: describeReason(source.reason),
   };
 }
