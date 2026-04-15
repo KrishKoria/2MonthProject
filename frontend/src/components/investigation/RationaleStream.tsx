@@ -4,7 +4,9 @@ import { motion } from "motion/react";
 import { AlertOctagon, BookMarked, Sparkles, StickyNote } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { HelpTooltip } from "@/components/guidance/HelpTooltip";
 import { Separator } from "@/components/ui/separator";
+import { TERM_COPY } from "@/lib/experience-copy";
 import type { RationaleResult, SourceRecord } from "@/lib/types";
 
 interface RationaleStreamProps {
@@ -27,12 +29,11 @@ export function RationaleStream({
       <Alert variant="destructive" className="border-dashed">
         <AlertOctagon />
         <AlertTitle className="font-display text-lg italic">
-          Manual review required
+          A person needs to finish this case
         </AlertTitle>
         <AlertDescription>
-          Insufficient evidence to synthesize a rationale — all four evidence
-          sources were unavailable or returned no signal. Route this claim to a
-          senior investigator.
+          The system could not gather enough trustworthy evidence to write a
+          useful summary. Route this claim to a senior reviewer.
         </AlertDescription>
       </Alert>
     );
@@ -42,7 +43,7 @@ export function RationaleStream({
     return (
       <Alert variant="destructive">
         <AlertOctagon />
-        <AlertTitle>Rationale failed</AlertTitle>
+        <AlertTitle>Could not finish the draft summary</AlertTitle>
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
@@ -55,7 +56,7 @@ export function RationaleStream({
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
           <Sparkles className="size-3 animate-soft-pulse" style={{ color: "var(--chart-2)" }} />
-          Synthesizing rationale…
+          Writing a short case summary…
         </div>
         <motion.blockquote
           className="font-display text-2xl italic leading-snug text-foreground/90 md:text-3xl"
@@ -105,7 +106,10 @@ export function RationaleStream({
           ) : null}
         </div>
         <div>
-          <Eyebrow>Confidence</Eyebrow>
+          <div className="mb-2 flex items-center gap-1.5">
+            <Eyebrow className="mb-0">Confidence</Eyebrow>
+            <HelpTooltip label="Confidence">{TERM_COPY.confidence}</HelpTooltip>
+          </div>
           <div className="flex items-baseline gap-1">
             <span className="font-display text-4xl tabular-nums">
               {(rationale.confidence * 100).toFixed(0)}
@@ -118,7 +122,7 @@ export function RationaleStream({
 
       {rationale.supporting_evidence.length > 0 ? (
         <section>
-          <Eyebrow icon={StickyNote}>Supporting evidence</Eyebrow>
+          <Eyebrow icon={StickyNote}>Why the system said that</Eyebrow>
           <ul className="flex flex-col gap-2 text-sm">
             {rationale.supporting_evidence.map((e, i) => (
               <li key={i} className="flex gap-2 leading-relaxed">
@@ -132,7 +136,7 @@ export function RationaleStream({
 
       {Object.keys(rationale.anomaly_flags_addressed).length > 0 ? (
         <section>
-          <Eyebrow>Anomaly flags addressed</Eyebrow>
+          <Eyebrow>Checks covered</Eyebrow>
           <dl className="grid gap-2 md:grid-cols-3">
             {Object.entries(rationale.anomaly_flags_addressed).map(([flag, note]) => (
               <div
@@ -155,7 +159,7 @@ export function RationaleStream({
 
       {rationale.policy_citations.length > 0 ? (
         <section>
-          <Eyebrow icon={BookMarked}>Cited in rationale</Eyebrow>
+          <Eyebrow icon={BookMarked}>Rules referenced</Eyebrow>
           <ul className="flex flex-col gap-3">
             {rationale.policy_citations.map((c, i) => (
               <li
@@ -180,12 +184,14 @@ export function RationaleStream({
 function Eyebrow({
   icon: Icon,
   children,
+  className,
 }: {
   icon?: typeof BookMarked;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+    <div className={`mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground ${className ?? ""}`}>
       {Icon ? <Icon className="size-3" /> : null}
       {children}
     </div>

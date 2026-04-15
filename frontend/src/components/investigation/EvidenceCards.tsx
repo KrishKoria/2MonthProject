@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { BookMarked, CircleCheck, CircleDashed, FileSearch, Scale, Users } from "lucide-react";
 
+import { HelpTooltip } from "@/components/guidance/HelpTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -10,6 +11,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { TERM_COPY } from "@/lib/experience-copy";
 import { getEvidenceSourceDisplay } from "@/lib/investigation";
 import type { EvidenceEnvelope, EvidenceTool } from "@/lib/types";
 
@@ -21,10 +23,10 @@ const TOOL_META: Record<
   EvidenceTool,
   { label: string; icon: typeof BookMarked }
 > = {
-  rag_retrieval: { label: "Policy RAG", icon: BookMarked },
-  ncci_lookup: { label: "NCCI edits", icon: Scale },
-  provider_history: { label: "Provider history", icon: Users },
-  duplicate_search: { label: "Duplicate search", icon: FileSearch },
+  rag_retrieval: { label: "Policy and billing rules", icon: BookMarked },
+  ncci_lookup: { label: "Code pairing rules", icon: Scale },
+  provider_history: { label: "Provider pattern", icon: Users },
+  duplicate_search: { label: "Similar claim search", icon: FileSearch },
 };
 
 function SourcesStrip({ evidence }: { evidence: EvidenceEnvelope }) {
@@ -113,7 +115,12 @@ export function EvidenceCards({ evidence }: EvidenceCardsProps) {
       key: "ncci",
       node: (
         <section>
-          <Eyebrow icon={Scale}>NCCI edit check</Eyebrow>
+          <div className="mb-3 flex items-center gap-1.5">
+            <Eyebrow icon={Scale} className="mb-0">
+              Code pairing rules
+            </Eyebrow>
+            <HelpTooltip label="CMS code pairing rules">{TERM_COPY.ncci}</HelpTooltip>
+          </div>
           <div className="rounded-md border border-border bg-background px-4 py-3 text-sm">
             <div className="flex items-center gap-2">
               <Badge
@@ -147,7 +154,7 @@ export function EvidenceCards({ evidence }: EvidenceCardsProps) {
       key: "provider",
       node: (
         <section>
-          <Eyebrow icon={Users}>Provider context</Eyebrow>
+          <Eyebrow icon={Users}>Provider pattern</Eyebrow>
           <p className="text-sm leading-relaxed text-foreground/90">{provider_context}</p>
         </section>
       ),
@@ -159,7 +166,7 @@ export function EvidenceCards({ evidence }: EvidenceCardsProps) {
       key: "dupes",
       node: (
         <section>
-          <Eyebrow icon={FileSearch}>Possible duplicates</Eyebrow>
+          <Eyebrow icon={FileSearch}>Similar nearby claims</Eyebrow>
           <ul className="flex flex-col gap-2">
             {duplicate_matches.map((d) => (
               <li
@@ -212,12 +219,14 @@ export function EvidenceCards({ evidence }: EvidenceCardsProps) {
 function Eyebrow({
   icon: Icon,
   children,
+  className,
 }: {
   icon: typeof BookMarked;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-3 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+    <div className={`mb-3 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground ${className ?? ""}`}>
       <Icon className="size-3" />
       {children}
     </div>

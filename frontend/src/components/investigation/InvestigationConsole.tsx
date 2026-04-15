@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
+import { ANOMALY_COPY } from "@/lib/experience-copy";
 import {
   getDisplayedAnomalyFlagStatus,
   inferInvestigationStage,
@@ -43,10 +44,10 @@ interface InvestigationConsoleProps {
 }
 
 const STAGES: Array<{ key: Exclude<InvestigationStage, "idle" | "error" | "halted">; label: string }> = [
-  { key: "triage", label: "Triage" },
-  { key: "evidence", label: "Evidence" },
-  { key: "rationale", label: "Rationale" },
-  { key: "done", label: "Sealed" },
+  { key: "triage", label: "Quick scan" },
+  { key: "evidence", label: "Check facts" },
+  { key: "rationale", label: "Draft summary" },
+  { key: "done", label: "Ready" },
 ];
 
 const FLAG_TONE: Record<DisplayedAnomalyFlagStatus, { bg: string; fg: string; label: string }> = {
@@ -160,7 +161,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
       onComplete: (e) => {
         applyInvestigationSnapshot(e.data);
         toast.success("Investigation complete", {
-          description: "Rationale sealed and persisted.",
+          description: "The draft summary is ready for your decision.",
         });
       },
       onHalt: (e) => {
@@ -170,7 +171,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
         });
         setStage("halted");
         toast.warning("Manual review required", {
-          description: "Evidence insufficient — routed for human review.",
+          description: "There was not enough signal to write a trustworthy summary.",
         });
       },
       onError: (e) => {
@@ -216,11 +217,11 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
         <Empty className="border border-dashed border-border/70 rounded-lg">
           <EmptyHeader>
             <EmptyTitle className="font-display italic text-2xl">
-              No investigation on file
+              No case review has started yet
             </EmptyTitle>
             <EmptyDescription>
-              Press <em>Investigate</em> to stream triage, evidence, and the
-              AI-synthesized rationale into the record.
+              Start guided review to build a quick scan, supporting facts, and a
+              draft summary before you decide what happens next.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -248,7 +249,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
             <Separator className="mb-6" />
-            <SectionEyebrow>Evidence envelope</SectionEyebrow>
+            <SectionEyebrow>Supporting facts</SectionEyebrow>
             <EvidenceCards evidence={evidence} />
           </motion.section>
         ) : null}
@@ -263,7 +264,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
             <Separator className="mb-6" />
-            <SectionEyebrow>Rationale</SectionEyebrow>
+            <SectionEyebrow>Draft summary</SectionEyebrow>
             <RationaleStream
               streaming={stage === "rationale"}
               streamText={streamText}
@@ -284,7 +285,7 @@ export function InvestigationConsole({ claimId, initial }: InvestigationConsoleP
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
             <Separator className="mb-6" />
-            <SectionEyebrow>Human review</SectionEyebrow>
+            <SectionEyebrow>Your decision</SectionEyebrow>
             <HumanReviewDesk
               claimId={claimId}
               humanDecision={humanDecision}
@@ -319,15 +320,15 @@ function Header({
     stage === "done"
       ? "Sealed"
       : stage === "halted"
-      ? "Manual review"
+      ? "Needs a person"
       : stage === "error"
-      ? "Error"
+      ? "Could not finish"
       : isStreaming
-      ? "Investigating"
+      ? "Building your case"
       : inProgress
       ? "In progress"
       : hasResults
-      ? "On file"
+      ? "Ready for review"
       : "Not started";
 
   return (
@@ -369,17 +370,17 @@ function Header({
           {hasResults && !isStreaming ? (
             <>
               <RotateCcw data-icon="inline-start" />
-              Re-run investigation
+              Run guided review again
             </>
           ) : isStreaming ? (
             <>
               <Sparkles data-icon="inline-start" className="animate-soft-pulse" />
-              Streaming…
+              Working…
             </>
           ) : (
             <>
               <ShieldCheck data-icon="inline-start" />
-              Investigate
+              Start guided review
             </>
           )}
         </Button>
@@ -477,7 +478,7 @@ function TriagePanel({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <SectionEyebrow>{evidence ? "Anomaly read" : "Triage read"}</SectionEyebrow>
+      <SectionEyebrow>{evidence ? "What stands out" : "Quick scan"}</SectionEyebrow>
       <div className="grid gap-4 md:grid-cols-[auto_1fr] md:items-start">
         <div className="flex flex-col gap-2">
           <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -497,7 +498,7 @@ function TriagePanel({
             {triage.priority}
           </span>
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-            conf {(triage.confidence * 100).toFixed(0)}%
+            confidence {(triage.confidence * 100).toFixed(0)}%
           </span>
         </div>
         <div className="grid gap-2 md:grid-cols-3">
@@ -510,7 +511,7 @@ function TriagePanel({
                 className="rounded-md border border-border/70 bg-background px-3 py-2.5"
               >
                 <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                  {flag.replace(/_/g, " ")}
+                  {ANOMALY_COPY[flag].label}
                 </div>
                 <div
                   className="mt-1.5 inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] uppercase tracking-wider"

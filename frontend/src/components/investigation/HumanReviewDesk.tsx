@@ -68,7 +68,7 @@ export function HumanReviewDesk({
       onDecisionSaved(investigation);
       setOpen(false);
       toast.success("Human decision recorded", {
-        description: `${DECISION_META[decision].label} saved to the investigation record.`,
+        description: `${DECISION_META[decision].label} saved to the case record.`,
       });
     } catch (cause) {
       const message =
@@ -91,11 +91,11 @@ export function HumanReviewDesk({
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 <FilePenLine className="size-3" />
-                Human decision
+                Choose the next step
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={activeDecision.badgeVariant}>
-                  {humanDecision ? activeDecision.label : "Awaiting reviewer"}
+                  {humanDecision ? activeDecision.label : "Waiting for your decision"}
                 </Badge>
                 {humanDecision ? (
                   <Badge variant="outline">
@@ -106,7 +106,7 @@ export function HumanReviewDesk({
               <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
                 {humanDecision
                   ? activeDecision.summary
-                  : "Seal the case with an investigator decision once the rationale and evidence packet are sufficient."}
+                  : "When the facts and draft summary look solid, record what should happen next."}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -120,7 +120,7 @@ export function HumanReviewDesk({
                 }}
               >
                 <CheckCircle2 data-icon="inline-start" />
-                Accept
+                {DECISION_META.accepted.actionLabel}
               </Button>
               <Button
                 size="sm"
@@ -132,7 +132,7 @@ export function HumanReviewDesk({
                 }}
               >
                 <OctagonX data-icon="inline-start" />
-                Reject
+                {DECISION_META.rejected.actionLabel}
               </Button>
               <Button
                 size="sm"
@@ -144,7 +144,7 @@ export function HumanReviewDesk({
                 }}
               >
                 <ShieldAlert data-icon="inline-start" />
-                Escalate
+                {DECISION_META.escalated.actionLabel}
               </Button>
             </div>
           </div>
@@ -175,8 +175,7 @@ export function HumanReviewDesk({
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-4 text-sm text-muted-foreground">
-              No reviewer decision has been committed yet. Choose a disposition to
-              finalize the case record.
+              No decision has been saved yet. Choose the next step when you are ready.
             </div>
           )}
         </div>
@@ -185,16 +184,16 @@ export function HumanReviewDesk({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Record reviewer decision</DialogTitle>
+            <DialogTitle>Save the next step</DialogTitle>
             <DialogDescription>
-              Confirm the disposition that should govern payment handling for claim{" "}
+              Confirm what should happen next for claim{" "}
               <span className="font-mono">{claimId}</span>.
             </DialogDescription>
           </DialogHeader>
 
           <FieldGroup>
             <Field>
-              <FieldLabel>Disposition</FieldLabel>
+              <FieldLabel>Recommended next step</FieldLabel>
               <ToggleGroup
                 type="single"
                 value={decision}
@@ -205,9 +204,15 @@ export function HumanReviewDesk({
                 }}
                 className="justify-start"
               >
-                <ToggleGroupItem value="accepted">Accept</ToggleGroupItem>
-                <ToggleGroupItem value="rejected">Reject</ToggleGroupItem>
-                <ToggleGroupItem value="escalated">Escalate</ToggleGroupItem>
+                <ToggleGroupItem value="accepted">
+                  {DECISION_META.accepted.actionLabel}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="rejected">
+                  {DECISION_META.rejected.actionLabel}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="escalated">
+                  {DECISION_META.escalated.actionLabel}
+                </ToggleGroupItem>
               </ToggleGroup>
               <FieldDescription>{DECISION_META[decision].summary}</FieldDescription>
             </Field>
@@ -216,7 +221,7 @@ export function HumanReviewDesk({
               <FieldLabel htmlFor="review-notes">Reviewer notes</FieldLabel>
               <Textarea
                 id="review-notes"
-                placeholder="Summarize the policy basis, material evidence, and any follow-up actions."
+                placeholder="Write the short reason for your decision and any follow-up action."
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={6}
