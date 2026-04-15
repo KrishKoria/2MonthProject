@@ -35,7 +35,7 @@ Plans:
 - [x] 01-01-PLAN.md — Wave 0: Test scaffold (auth.test.ts, auth-session.test.ts, deactivate route.test.ts)
 - [x] 01-02-PLAN.md — Wave 1: Dependencies + Neon db client + Drizzle schema + drizzle.config + .env.example
 - [x] 01-03-PLAN.md — Wave 1: Type contracts (AppRole, SessionUser, InviteRecord) + access-control predicates
-- [ ] 01-04-PLAN.md — Wave 2: Better Auth server instance + browser auth client + Resend mailer
+- [x] 01-04-PLAN.md — Wave 2: Better Auth server instance + browser auth client + Resend mailer
 - [ ] 01-05-PLAN.md — Wave 3: Session helpers + BA route handler + admin deactivate/reactivate routes + migration checkpoint
 **UI hint**: no
 
@@ -100,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auth Foundation | 0/5 | Not started | - |
+| 1. Auth Foundation | 4/5 | In Progress|  |
 | 2. Session Gating + Entry Pages | 0/TBD | Not started | - |
 | 3. Authenticated Proxy | 0/TBD | Not started | - |
 | 4. Review Workflow Refactor | 0/TBD | Not started | - |
